@@ -19,6 +19,18 @@ void paramChange(bool x){
     bool z = x;
 }
 
+void overloaded(int x, int y){
+
+}
+
+void overloaded(int x, int y, int z){
+
+}
+
+void overloaded(){
+
+}
+
 namespace nspace
 {
     class test{

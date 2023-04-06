@@ -24,8 +24,17 @@ void paramChange(int x){
     int z = x*x;
 }
 
-void paramChange(int x, int y){
-    int z = x*y;
+
+void overloaded(int x, int y){
+
+}
+
+void overloaded(int x, int y, int z){
+
+}
+
+void overloaded(int x){
+
 }
 
 class test {

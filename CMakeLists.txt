@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.0)
 #das ist der name des projekts
 project(api_analysis)
 
+set(CMAKE_CXX_STANDARD 17)
+
+configure_file(include/compile_flags.txt .)
+
 #wir benötigen clang als library
 find_package(Clang REQUIRED)
 #version sollte 14.0.X sein
@@ -43,4 +47,4 @@ target_link_libraries(APIAnalysis
 #wir wollen das die ausführbare datei keine run time type information generiert
 #das ist notwendig weil die bibliothek (clangTooling) auch keine rtti hat, 
 #und wir die gleiche configuration haben müssen
-target_compile_options(APIAnalysis PUBLIC -fno-rtti)
+target_compile_options(APIAnalysis PUBLIC -fno-rtti -frtti)

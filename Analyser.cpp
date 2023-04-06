@@ -7,8 +7,8 @@ using namespace analyse;
 
 namespace analyse{
 
-    Analyser::Analyser(std::map<std::string, FunctionInstance> oldProgram,
-                       std::map<std::string, FunctionInstance> newProgram) {
+    Analyser::Analyser(const std::multimap<std::string, FunctionInstance>& oldProgram,
+                       const std::multimap<std::string, FunctionInstance>& newProgram) {
         this->oldProgram = oldProgram;
         this->newProgram = newProgram;
     }
@@ -50,7 +50,7 @@ namespace analyse{
     }
 
     void Analyser::compareFunctionHeader(FunctionInstance func) {
-        FunctionInstance newFunc = newProgram.at(func.name);
+        FunctionInstance newFunc = newProgram.find(func.name)->second;
 
         std::vector<FunctionInstance> overloadedFuncs;
         for (auto const &f: newProgram) {
@@ -60,9 +60,7 @@ namespace analyse{
         }
 
         if (overloadedFuncs.size() > 1) {
-            // separate handling for overloaded function, to ensure proper analysis
-            outs() << func.name +
-                      " is overloaded in the new program, this is a placeholder until there is proper handling";
+            outs()<<"\n Here an overloaded function was handled\n";
         } else {
             // compare the Params
             outs() << compareParams(func, newFunc);

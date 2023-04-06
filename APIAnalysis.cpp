@@ -1,32 +1,22 @@
-//Wir wollen in der lage sein commandozeilen parameter zu verarbeiten
 #include <clang/Tooling/CommonOptionsParser.h>
-//Wir sind eine frontend action
 #include <clang/Frontend/FrontendActions.h>
-//Wir machen Tooling
 #include "clang/Tooling/Tooling.h"
-//Wir benutzen die Visitor strategy
 #include <clang/AST/RecursiveASTVisitor.h>
-//Wir müssen mit dem compiler interagieren können.
 #include <clang/Frontend/CompilerInstance.h>
-
 #include <llvm/Support/CommandLine.h>
+
+#include "include/cxxopts.hpp"
 
 #include "header/HelperFunctions.h"
 #include "header/Analyser.h"
+#include "filesystem"
 
-//Das sind convenience definitionen, dass wir nicht so viel tippen müssen
 using namespace llvm;
 using namespace clang;
 using namespace clang::tooling;
 using namespace clang;
 using namespace helper;
 using namespace analyse;
-
-//Die commandozeilen optionen die wir parsen wollen, gehören zu unserem program
-static cl::OptionCategory API_Analysis("API_Analysis");
-//static cl::extrahelp MoreHelp("\nOptional extra help message");
-//static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
-static cl::opt<std::string> NewDirectory("newDir", cl::desc("Specify new Directory"), cl::value_desc("Directory"), cl::Positional, cl::init("-"));
 
 template<typename T, class... Args>
 std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendActionFactory(Args... args){
@@ -48,15 +38,14 @@ std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendAc
     return std::unique_ptr<FrontendActionFactory>(new SimpleFrontendActionFactory(args...));
 }
 
-//Der visitor ist der teil, der tatsächlich die knoten des AST besucht.
+
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
-    std::map<std::string, FunctionInstance>* program;
+    std::multimap<std::string, FunctionInstance>* program;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::map<std::string, FunctionInstance>* program) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program) : Context(Context){
         this->program = program;
     }
 
-    //This visits function declarations with the visitor pattern
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
         // skip this function, if it's declared in the header files
         if(!Context->getSourceManager().isInMainFile(functionDecl->getLocation())){
@@ -101,10 +90,10 @@ private:
     clang::ASTContext *Context;
 };
 
-//Der consumer bekommt den ganzen AST und verarbeitet den
+
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::map<std::string, FunctionInstance>* program) : apiAnalysisVisitor(Context, program){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program) : apiAnalysisVisitor(Context, program){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -114,12 +103,11 @@ private:
     APIAnalysisVisitor apiAnalysisVisitor;
 };
 
-//Die analyse Action ist die Klasse die managed was gemacht wird, 
-//In unserem fall generiert sie einen Consumer und übergibt dem die nötigen parameter
+
 class APIAnalysisAction : public clang::ASTFrontendAction {
-    std::map<std::string, FunctionInstance>* p;
+    std::multimap<std::string, FunctionInstance>* p;
 public:
-    explicit APIAnalysisAction(std::map<std::string, FunctionInstance>* program){
+    explicit APIAnalysisAction(std::multimap<std::string, FunctionInstance>* program){
         p=program;
     };
 
@@ -130,50 +118,67 @@ public:
 private:
 };
 
-// TO-DO: Herausfinden ob / wie sich der CommonOptionsParser umgehen lässt
+
 int main(int argc, const char **argv) {
 
-    //Wir wollen commandozeilen parameter verarbeiten können, also nehmen wir einen option parser
-    //Da beim parsen etwas schief gehen kann, machen wir den extra schritt mit expectation
+    cxxopts::Options options("APIAnalysis", "Compares two versions of a C++ API and prints out the differences");
+    options.add_options()
+            ("doc, deep-overload-comparison", "Enables the statistical comparison of function bodies")
+            ("newDir, newDirectory", "Path to the newer version", cxxopts::value<std::string>())
+            ("oldDir, oldDirectory", "Path to the older version", cxxopts::value<std::string>());
 
-    auto ExpectedParser = CommonOptionsParser::create(argc, argv, API_Analysis);
-    if (!ExpectedParser) {
-        // Fail gracefully for unsupported options.
-        llvm::errs() << ExpectedParser.takeError();
-        return 1;
+    auto result = options.parse(argc, argv);
+
+    std::vector<std::string> oldFiles;
+    std::vector<std::string> newFiles;
+
+    if(result.count("oldDir")){
+        listFiles(result["oldDir"].as<std::string>(), &oldFiles);
+        outs()<<"The old directory contains " + itostr(oldFiles.size()) + " files\n";
+
+    }else{
+        throw std::invalid_argument("The older version of the project has to be specified");
     }
 
-    // TO-DO: not a viable solution, temporary only
-    std::vector<std::string> oldFiles;
-    listFiles(argv[1], &oldFiles);
+    if(result.count("newDir")){
+        listFiles(result["newDir"].as<std::string>(), &newFiles);
+        outs()<<"The new directory contains " + itostr(newFiles.size()) + " files\n";
 
-    outs()<<"The old directory contains " + itostr(oldFiles.size()) + " files\n";
+    }else{
+        throw std::invalid_argument("The older version of the project has to be specified");
+    }
+    bool docEnabled = result["doc"].as<bool>();
 
-    std::vector<std::string> newFiles;
-    listFiles(NewDirectory, &newFiles);
+    std::multimap<std::string, FunctionInstance> oldProgram;
+    std::multimap<std::string, FunctionInstance> newProgram;
 
-    outs()<<"The new directory contains " + itostr(newFiles.size()) + " files\n";
+    std::string errorMessage="The Compilationdatabase could not be found";
+    auto oldCD = CompilationDatabase::loadFromDirectory(std::filesystem::canonical(result["oldDir"].as<std::string>()).string(),errorMessage);
+    auto newCD = CompilationDatabase::loadFromDirectory(std::filesystem::canonical(result["newDir"].as<std::string>()).string(),errorMessage);
 
-    std::map<std::string, FunctionInstance> oldProgram;
-    std::map<std::string, FunctionInstance> newProgram;
+    // check if the compilation databases exist, otherwise use the standard provided in the build directory
+    if(!oldCD){
+        // put a standard empty CompilationDatabase here
+        oldCD = CompilationDatabase::loadFromDirectory(std::filesystem::current_path().string(), errorMessage);
+    }
+    if(!newCD){
+        newCD = CompilationDatabase::loadFromDirectory(std::filesystem::current_path().string(), errorMessage);
+    }
 
-    //Das ist der eigentliche option parser
-    CommonOptionsParser& OptionsParser = ExpectedParser.get();
 
-    //Wir erstellen ein clang tool objekt
-    ClangTool oldTool(OptionsParser.getCompilations(),
+    ClangTool oldTool(*oldCD,
                  oldFiles);
-    //Wir führen die frontend action mit unserem tool aus
     oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram).get());
 
-    ClangTool newTool(OptionsParser.getCompilations(),
+    ClangTool newTool(*newCD,
                    newFiles);
-    //Wir führen die frontend action mit unserem tool aus
     newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram).get());
 
+    // Analysing
     Analyser analyser = Analyser(oldProgram, newProgram);
 
     analyser.compareVersions();
+
     outs()<<"\n";
     return 0;
 }

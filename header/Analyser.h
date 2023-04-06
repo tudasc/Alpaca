@@ -17,7 +17,7 @@ namespace analyse{
 
         public:
             void compareVersions();
-            Analyser(std::map<std::string, FunctionInstance> oldProgram, std::map<std::string, FunctionInstance> newProgram);
+            Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram);
 
         private:
             void compareFunctionHeader(FunctionInstance func);
@@ -25,8 +25,8 @@ namespace analyse{
             std::string compareParams(FunctionInstance func, FunctionInstance newFunc);
             std::string compareReturnType(FunctionInstance func, FunctionInstance newFunc);
 
-            std::map<std::string, FunctionInstance> oldProgram;
-            std::map<std::string, FunctionInstance> newProgram;
+            std::multimap<std::string, FunctionInstance> oldProgram;
+            std::multimap<std::string, FunctionInstance> newProgram;
 
     };
 }
