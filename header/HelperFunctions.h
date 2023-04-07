@@ -2,4 +2,5 @@
 
 namespace helper {
     void listFiles(const std::string &path, std::vector<std::string> *listOfFiles);
+    std::string getAllParamsAsString(const std::vector<std::string>& params);
 }

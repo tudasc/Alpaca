@@ -52,34 +52,44 @@ public:
             return true;
         }
 
-        // gets a vector of all the classes / namespaces a function is part of e.g. simple::example::function() -> [simple, example]
-        std::string fullName = functionDecl->getQualifiedNameAsString();
-        std::string delimiter = "::";
-        std::vector<std::string> namespaces;
-
-        size_t pos = 0;
-        std::string singleNamespace;
-        while ((pos = fullName.find(delimiter)) != std::string::npos) {
-            singleNamespace = fullName.substr(0, pos);
-            namespaces.push_back(singleNamespace);
-            fullName.erase(0, pos + delimiter.length());
-        }
-
         FunctionInstance functionInstance;
+
         functionInstance.name = functionDecl->getNameAsString();
         functionInstance.returnType = functionDecl->getDeclaredReturnType().getAsString();
+
         int numParam = functionDecl->getNumParams();
         for(int i=0;i<numParam;i++){
             functionInstance.params.push_back(functionDecl->getParamDecl(i)->getType().getAsString());
         }
 
+        // gets a vector of all the classes / namespaces a function is part of e.g. simple::example::function() -> [simple, example]
+        std::string fullName = functionDecl->getQualifiedNameAsString();
+        std::string delimiter = "::";
+
+        size_t pos = 0;
+        std::string singleNamespace;
+        while ((pos = fullName.find(delimiter)) != std::string::npos) {
+            singleNamespace = fullName.substr(0, pos);
+            functionInstance.location.push_back(singleNamespace);
+            fullName.erase(0, pos + delimiter.length());
+        }
+
         // gets the File Name
         FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
-        FullLocation.getManager().getFilename(functionDecl->getBeginLoc());
+        functionInstance.filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), std::filesystem::current_path());
 
-        // saves all the Stmt class names of the function used for a body comparison
-        for(auto x : getStmtChildren(functionDecl->getBody())){
-            functionInstance.stmts.push_back(x->getStmtClassName());
+        // saves the function body as a string
+        auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
+        LangOptions lang;
+        SourceManager *sm = &(Context->getSourceManager());
+        auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+        functionInstance.body = std::string(sm->getCharacterData(start), sm->getCharacterData(endToken)-sm->getCharacterData(start));
+
+        // get the scope of the functions (for some reason global functions dont have an access value, so it is set manually)
+        if(getAccessSpelling(functionDecl->getAccess())==""){
+            functionInstance.scope = "public";
+        }else{
+            functionInstance.scope = getAccessSpelling(functionDecl->getAccess());
         }
 
         program->insert(std::make_pair(functionInstance.name, functionInstance));

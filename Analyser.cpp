@@ -1,9 +1,14 @@
 #include "header/Analyser.h"
 #include <llvm/Support/CommandLine.h>
+#include "header/CodeMatcher.h"
+#include "header/HelperFunctions.h"
+#include <cmath>
 
 
 using namespace llvm;
 using namespace analyse;
+
+const double percentageCutOff = 90;
 
 namespace analyse{
 
@@ -16,60 +21,100 @@ namespace analyse{
     void Analyser::compareVersions() {
         for (auto const &x: oldProgram) {
             FunctionInstance func = x.second;
+            findBody(func);
             if (newProgram.count(func.name) <= 0) {
-                std::string bodyStatus = findBody(func);
-                if (bodyStatus == "") {
-                    outs() << "The function \"" + func.name + "\" was deleted\n";
+                auto bodyStatus = findBody(func);
+                if (bodyStatus.first == "") {
+                    outs() << "The function \"" + func.name + "\" was most likely deleted\n";
                 } else {
-                    outs() << "The function \"" + func.name + "\" was renamed to \"" + bodyStatus + "\"\n";
+                    outs() << "The function \"" + func.name + "\" was renamed to \"" + bodyStatus.first + "\" with a code similarity of " + std::to_string(bodyStatus.second) + "%\n";
                 }
-            } else {
+            } else if (newProgram.count(func.name) == 1){
                 compareFunctionHeader(func);
+            } else {
+                compareOverloadedFunctionHeader(func);
             }
         }
     }
 
-    std::string Analyser::findBody(FunctionInstance oldFunc) {
-        for (auto const &x: newProgram) {
-            FunctionInstance func = x.second;
-            if (func.stmts.size() != oldFunc.stmts.size()) continue;
-            std::string matchingFunction = func.name;
-            for (std::vector<std::string>::iterator newIt = func.stmts.begin(), oldIt = oldFunc.stmts.begin();
-                 newIt != func.stmts.end() && oldIt != oldFunc.stmts.end();
-                 ++newIt, ++oldIt) {
-                if ((*newIt) != (*oldIt)) {
-                    matchingFunction = "";
+
+    std::pair<std::string, double> Analyser::findBody(FunctionInstance oldFunc) {
+        std::string currentHighest = "";
+        double currentHighestValue = 0;
+        for(auto const &newFunc : newProgram){
+            double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc.second);
+
+            if(percentageDifference >= percentageCutOff){
+                if(percentageDifference > currentHighestValue){
+                    currentHighestValue = percentageDifference;
+                    currentHighest = newFunc.second.name;
                 }
             }
-            if (matchingFunction != "" && compareReturnType(oldFunc, func) == "" &&
-                compareParams(oldFunc, func) == "") {
-                return matchingFunction;
+        }
+
+        return std::make_pair(currentHighest, currentHighestValue);
+    }
+
+    std::pair<FunctionInstance, double> Analyser::findBody(FunctionInstance oldFunc, const std::vector<FunctionInstance> funcSubset){
+        FunctionInstance currentHighest;
+        double currentHighestValue = 0;
+        for(auto const &newFunc : funcSubset){
+            double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
+
+            if(percentageDifference >= percentageCutOff){
+                if(percentageDifference > currentHighestValue){
+                    currentHighestValue = percentageDifference;
+                    currentHighest = newFunc;
+                }
             }
         }
-        return "";
+
+        return std::make_pair(currentHighest, currentHighestValue);
     }
+
 
     void Analyser::compareFunctionHeader(FunctionInstance func) {
         FunctionInstance newFunc = newProgram.find(func.name)->second;
 
-        std::vector<FunctionInstance> overloadedFuncs;
-        for (auto const &f: newProgram) {
-            if (f.first == func.name) {
-                overloadedFuncs.push_back(f.second);
+        // compare the params without overloading
+        outs() << compareParams(func, newFunc);
+
+        compareFunctionHeaderExceptParams(func, newFunc);
+    }
+
+    void Analyser::compareOverloadedFunctionHeader(FunctionInstance func) {
+        std::vector<FunctionInstance> overloadedFunctions;
+        // check if there is an exact match
+        for (const auto &item: newProgram){
+            if(item.second.name == func.name){
+                // function header is an exact match
+                if(compareParams(func, item.second) == ""){
+                    // proceed normally
+                    compareFunctionHeaderExceptParams(func, item.second);
+                    return;
+                }
+                overloadedFunctions.push_back(item.second);
             }
         }
-
-        if (overloadedFuncs.size() > 1) {
-            outs()<<"\n Here an overloaded function was handled\n";
-        } else {
-            // compare the Params
-            outs() << compareParams(func, newFunc);
+        // if there isnt an exact match, find the nearest match
+        auto closest = findBody(func, overloadedFunctions);
+        if(closest.second != 0){
+            // there is another function that fits, proceed to compare it normally
+            outs()<< "DISCLAIMER: There is code similarity of " + std::to_string(closest.second) + "% of the old overloaded function and the in the following analyzed instance of the overloaded function\n";
+            outs()<< compareParams(func, closest.first);
+            compareFunctionHeaderExceptParams(func, closest.first);
+        }else{
+            outs()<<"The overloaded function " + func.name + " with the params " + helper::getAllParamsAsString(func.params) + " was deleted";
         }
 
+    }
+
+    void Analyser::compareFunctionHeaderExceptParams(FunctionInstance func, FunctionInstance newFunc){
         // compare the return type
         outs() << compareReturnType(func, newFunc);
 
         // TO-DO Compare the scope of the functions
+
     }
 
     std::string Analyser::compareParams(FunctionInstance func, FunctionInstance newFunc) {
