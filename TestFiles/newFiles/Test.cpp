@@ -20,21 +20,36 @@ void paramChange(bool x){
 }
 
 void overloaded(int x, int y){
-
+    int combine = x + y;
+    combine = combine * 2;
 }
 
 void overloaded(int x, int y, int z){
 
 }
 
-void overloaded(){
-
-}
 
 namespace nspace
 {
     class test{
         void Func(int i) {}
+    };
+}
+
+class test {
+private:
+    void somethingPrivate(){
+        int x = 10;
+    }
+    void somethingPublic(){
+        int i = 10;
+    }
+};
+
+namespace newNspace{
+    class movingNamespace{
+    public:
+        void moveNamespace() {}
     };
 }
 

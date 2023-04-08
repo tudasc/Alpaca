@@ -27,4 +27,13 @@ namespace helper {
         }
         return output.substr(0, output.length()-2) + "]";
     }
+
+    std::string getAllNamespacesAsString(const std::vector<std::string>& params){
+        std::string output = "";
+        for (const auto &item: params){
+            output += item + "::";
+        }
+        return output.substr(0, output.length()-2);
+    }
+
 }

@@ -44,6 +44,9 @@ namespace analyse{
             std::pair<std::string, double> findBody(FunctionInstance oldBody);
             std::string compareParams(FunctionInstance func, FunctionInstance newFunc);
             std::string compareReturnType(FunctionInstance func, FunctionInstance newFunc);
+            std::string compareScope(FunctionInstance func, FunctionInstance newFunc);
+            std::string compareFile(FunctionInstance func, FunctionInstance newFunc);
+            std::string compareNamespaces(FunctionInstance func, FunctionInstance newFunc);
 
             std::multimap<std::string, FunctionInstance> oldProgram;
             std::multimap<std::string, FunctionInstance> newProgram;
