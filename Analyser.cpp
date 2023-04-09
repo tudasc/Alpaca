@@ -19,30 +19,40 @@ namespace analyse{
     }
 
     void Analyser::compareVersions() {
-        // TODO: Maybe ignore main()?
         for (auto const &x: oldProgram) {
             FunctionInstance func = x.second;
             // skip this function if the old instance was private, because it couldnt have been used by anyone
-            if(func.scope == "private"){
+            if(func.scope == "private" || func.name == "main"){
                 continue;
             }
-            findBody(func);
-            if (newProgram.count(func.name) <= 0) {
+
+            if (newProgram.count(func.qualifiedName) <= 0) {
                 auto bodyStatus = findBody(func);
                 // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
-                if (bodyStatus.first == "" || newProgram.find(bodyStatus.first)->second.scope == "private"){
+                if (bodyStatus.first == ""){
                     outs() << "The function \"" + func.name + "\" was most likely deleted\n";
                 } else {
-                        //TODO: maybe check the rest of the header to confirm suspicion
-                        outs() << "The function \"" + func.name + "\" was renamed to \"" + bodyStatus.first +
-                                  "\" with a code similarity of " + std::to_string(bodyStatus.second) + "%\n";
+                    // use the function found during the statistical analysis
+                    FunctionInstance newFunc = newProgram.find(bodyStatus.first)->second;
+                    if(newFunc.name != func.name){
+                        // further checks on the Header to ensure, that this is indeed a renamed function
+                        if(compareFunctionHeader(func, newFunc) == ""){
+                            outs() << "The function \"" + func.name + "\" was renamed to \"" + newFunc.name +
+                                      "\" with a code similarity of " + std::to_string(bodyStatus.second) + "%\n";
+                        } else {
+                            outs() << "The function \"" + func.name + "\" was most likely deleted\n";
+                        }
+                    } else{
+                        outs() << compareFunctionHeader(func, newFunc);
+                    }
                 }
-                outs() << "----------------------------------------------------------\n";
-            } else if (newProgram.count(func.name) == 1){
-                compareFunctionHeader(func);
+            } else if (newProgram.count(func.qualifiedName) == 1){
+                FunctionInstance newFunc = newProgram.find(func.qualifiedName)->second;
+                outs() << compareFunctionHeader(func, newFunc);
             } else {
-                compareOverloadedFunctionHeader(func);
+                outs() << compareOverloadedFunctionHeader(func);
             }
+            outs() << "----------------------------------------------------------\n";
         }
     }
 
@@ -53,10 +63,16 @@ namespace analyse{
         for(auto const &newFunc : newProgram){
             double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc.second);
 
+            // prioritize functions that have the exact same name and header
+            // TODO: ask to make sure this is the correct way to handle this
+            if (oldFunc.name == newFunc.second.name){
+                return std::make_pair(newFunc.second.qualifiedName, percentageDifference);
+            }
+
             if(percentageDifference >= percentageCutOff){
                 if(percentageDifference > currentHighestValue){
                     currentHighestValue = percentageDifference;
-                    currentHighest = newFunc.second.name;
+                    currentHighest = newFunc.second.qualifiedName;
                 }
             }
         }
@@ -82,25 +98,25 @@ namespace analyse{
     }
 
 
-    void Analyser::compareFunctionHeader(FunctionInstance func) {
-        FunctionInstance newFunc = newProgram.find(func.name)->second;
-
+    std::string Analyser::compareFunctionHeader(FunctionInstance func, FunctionInstance newFunc) {
+        std::string output = "";
         // compare the params without overloading
-        outs() << compareParams(func, newFunc);
+        output += compareParams(func, newFunc);
 
-        compareFunctionHeaderExceptParams(func, newFunc);
+        output += compareFunctionHeaderExceptParams(func, newFunc);
+        return output;
     }
 
-    void Analyser::compareOverloadedFunctionHeader(FunctionInstance func) {
+    std::string Analyser::compareOverloadedFunctionHeader(FunctionInstance func) {
         std::vector<FunctionInstance> overloadedFunctions;
+        std::string output = "";
         // check if there is an exact match
         for (const auto &item: newProgram){
-            if(item.second.name == func.name){
+            if(item.second.qualifiedName == func.qualifiedName){
                 // function header is an exact match
                 if(compareParams(func, item.second) == ""){
                     // proceed normally
-                    compareFunctionHeaderExceptParams(func, item.second);
-                    return;
+                    return compareFunctionHeaderExceptParams(func, item.second);
                 }
                 overloadedFunctions.push_back(item.second);
             }
@@ -109,26 +125,28 @@ namespace analyse{
         auto closest = findBody(func, overloadedFunctions);
         if(closest.second != 0){
             // there is another function that fits, proceed to compare it normally
-            outs()<< "DISCLAIMER: There is code similarity of " + std::to_string(closest.second) + "% of the old overloaded function and the in the following analyzed instance of the overloaded function\n";
-            outs()<< compareParams(func, closest.first);
-            compareFunctionHeaderExceptParams(func, closest.first);
+            output += "DISCLAIMER: There is code similarity of " + std::to_string(closest.second) + "% between the old overloaded function and the in the following analyzed instance of the overloaded function\n";
+            output += compareParams(func, closest.first);
+            output += compareFunctionHeaderExceptParams(func, closest.first);
         }else{
-            outs()<<"The overloaded function " + func.name + " with the params " + helper::getAllParamsAsString(func.params) + " was deleted";
+            output += "The overloaded function " + func.name + " with the params " + helper::getAllParamsAsString(func.params) + " was deleted";
         }
+        return output;
 
     }
 
-    void Analyser::compareFunctionHeaderExceptParams(FunctionInstance func, FunctionInstance newFunc){
-        // compare the return type
-        outs() << compareReturnType(func, newFunc);
+    std::string Analyser::compareFunctionHeaderExceptParams(FunctionInstance func, FunctionInstance newFunc){
+        std::string output = "";
 
-        // compare the scope of the functions
-        outs() << compareScope(func, newFunc);
+        output += compareReturnType(func, newFunc);
 
-        outs() << compareNamespaces(func, newFunc);
+        output += compareScope(func, newFunc);
 
-        outs() << compareFile(func, newFunc);
-        outs() << "----------------------------------------------------------\n";
+        output += compareNamespaces(func, newFunc);
+
+        output += compareFile(func, newFunc);
+
+        return output;
     }
 
     std::string Analyser::compareParams(FunctionInstance func, FunctionInstance newFunc) {
@@ -139,15 +157,12 @@ namespace analyse{
             for (std::vector<std::string>::iterator newIt = newFunc.params.begin(), oldIt = func.params.begin();
                  newIt != newFunc.params.end() && oldIt != func.params.end();
                  ++newIt, ++oldIt) {
-                // TO-DO: Special Message if the order was simply changed
                 if ((*oldIt) != (*newIt)) {
-                    //TO-DO: maybe insert the parameter names additionally to the types?
                     output.append("The parameter type \"" + (*oldIt) + "\" of the function \"" + newFunc.name +
                                   "\" has changed to \"" + (*newIt) + "\"\n");
                 }
             }
         } else {
-            //TO-DO: insert a message, that shows which new Parameters where added / what the current stand is
             output.append("The function \"" + func.name + "\" has a new number of parameters. Instead of " +
                           std::to_string(numberOldParams) + " it now has " + std::to_string(numberNewParams) +
                           "--> " + helper::getAllParamsAsString(newFunc.params) +

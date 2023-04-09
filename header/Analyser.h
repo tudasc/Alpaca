@@ -7,6 +7,7 @@
 namespace analyse{
     struct FunctionInstance {
         std::string name;
+        std::string qualifiedName;
         std::string returnType;
         std::vector<std::string> params;
         std::string body;
@@ -37,9 +38,9 @@ namespace analyse{
             Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram);
 
         private:
-            void compareFunctionHeader(FunctionInstance func);
-            void compareOverloadedFunctionHeader(FunctionInstance func);
-            void compareFunctionHeaderExceptParams(FunctionInstance func, FunctionInstance newFunc);
+            std::string compareFunctionHeader(FunctionInstance func, FunctionInstance newFunc);
+            std::string compareOverloadedFunctionHeader(FunctionInstance func);
+            std::string compareFunctionHeaderExceptParams(FunctionInstance func, FunctionInstance newFunc);
             static std::pair<FunctionInstance, double>findBody(FunctionInstance oldFunc, const std::vector<FunctionInstance> funcSubset);
             std::pair<std::string, double> findBody(FunctionInstance oldBody);
             std::string compareParams(FunctionInstance func, FunctionInstance newFunc);
