@@ -196,7 +196,7 @@ int main(int argc, const char **argv) {
     // Analysing
     Analyser analyser = Analyser(oldProgram, newProgram);
 
-    analyser.compareVersions();
+    analyser.compareVersionsWithDoc(docEnabled);
 
     outs()<<"\n";
     return 0;
