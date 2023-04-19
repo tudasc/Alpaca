@@ -60,7 +60,7 @@ public:
         functionInstance.returnType = functionDecl->getDeclaredReturnType().getAsString();
 
 
-        int numParam = functionDecl->getNumParams();
+        unsigned int numParam = functionDecl->getNumParams();
         for(int i=0;i<numParam;i++){
             functionInstance.params.push_back(functionDecl->getParamDecl(i)->getType().getAsString());
         }
@@ -69,7 +69,7 @@ public:
         std::string fullName = functionDecl->getQualifiedNameAsString();
         std::string delimiter = "::";
 
-        size_t pos = 0;
+        int pos = 0;
         std::string singleNamespace;
         while ((pos = fullName.find(delimiter)) != std::string::npos) {
             singleNamespace = fullName.substr(0, pos);
@@ -92,8 +92,8 @@ public:
         auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
         functionInstance.body = std::string(sm->getCharacterData(start), sm->getCharacterData(endToken)-sm->getCharacterData(start));
 
-        // get the scope of the functions (for some reason global functions dont have an access value, so it is set manually)
-        if(getAccessSpelling(functionDecl->getAccess())==""){
+        // get the scope of the functions (for some reason global functions don't have an access value, so it is set manually)
+        if(getAccessSpelling(functionDecl->getAccess()).empty()){
             functionInstance.scope = "public";
         }else{
             functionInstance.scope = getAccessSpelling(functionDecl->getAccess());
@@ -171,7 +171,7 @@ int main(int argc, const char **argv) {
     std::multimap<std::string, FunctionInstance> oldProgram;
     std::multimap<std::string, FunctionInstance> newProgram;
 
-    std::string errorMessage="The Compilationdatabase could not be found";
+    std::string errorMessage="The Compilation-database could not be found";
     auto oldCD = CompilationDatabase::loadFromDirectory(std::filesystem::canonical(result["oldDir"].as<std::string>()).string(),errorMessage);
     auto newCD = CompilationDatabase::loadFromDirectory(std::filesystem::canonical(result["newDir"].as<std::string>()).string(),errorMessage);
 

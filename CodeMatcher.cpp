@@ -10,11 +10,11 @@ namespace matcher{
         std::string strippedCode;
         std::string delimiter = "\n";
 
-        size_t pos = 0;
+        unsigned long pos = 0;
         std::string singleLine;
         while ((pos = code.find(delimiter)) != std::string::npos) {
             singleLine = code.substr(0, pos);
-            if(int comment = singleLine.find("//")){
+            if(unsigned int comment = singleLine.find("//")){
                 singleLine = singleLine.substr(0, comment);
             }
             strippedCode += singleLine;
@@ -55,7 +55,7 @@ namespace matcher{
         return d[len1][len2];
     }
 
-    double compareFunctionBodies(analyse::FunctionInstance oldFunc, analyse::FunctionInstance newFunc) {
+    double compareFunctionBodies(const analyse::FunctionInstance& oldFunc, const analyse::FunctionInstance& newFunc) {
         auto strippedNewCode = matcher::stripCodeOfEmptySpaces(matcher::stripCodeOfComments(newFunc.body));
         auto strippedOldCode = matcher::stripCodeOfEmptySpaces(matcher::stripCodeOfComments(oldFunc.body));
         double distance = matcher::levenshteinDistanceBetweenCodeBlocks(strippedOldCode,strippedNewCode);

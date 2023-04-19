@@ -38,16 +38,16 @@ namespace analyse{
             Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram);
 
         private:
-            std::string compareFunctionHeader(FunctionInstance func, FunctionInstance newFunc);
-            std::string compareOverloadedFunctionHeader(FunctionInstance func);
-            std::string compareFunctionHeaderExceptParams(FunctionInstance func, FunctionInstance newFunc);
-            static std::pair<FunctionInstance, double>findBody(FunctionInstance oldFunc, const std::vector<FunctionInstance> funcSubset);
-            std::pair<std::string, double> findBody(FunctionInstance oldBody);
-            std::string compareParams(FunctionInstance func, FunctionInstance newFunc);
-            std::string compareReturnType(FunctionInstance func, FunctionInstance newFunc);
-            std::string compareScope(FunctionInstance func, FunctionInstance newFunc);
-            std::string compareFile(FunctionInstance func, FunctionInstance newFunc);
-            std::string compareNamespaces(FunctionInstance func, FunctionInstance newFunc);
+            std::pair<std::string, double> findBody(const FunctionInstance& oldBody);
+            std::string compareOverloadedFunctionHeader(const FunctionInstance& func);
+            static std::string compareFunctionHeader(const FunctionInstance&, const FunctionInstance&);
+            static std::string compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static std::pair<FunctionInstance, double>findBody(const FunctionInstance& oldFunc, const std::vector<FunctionInstance>& funcSubset);
+            static std::string compareParams(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static std::string compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static std::string compareScope(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static std::string compareFile(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static std::string compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc);
 
             std::multimap<std::string, FunctionInstance> oldProgram;
             std::multimap<std::string, FunctionInstance> newProgram;
