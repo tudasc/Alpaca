@@ -11,8 +11,8 @@ namespace helper {
                 if (x->d_name[0] == '.') continue;
                 if (x->d_type == DT_DIR) listFiles(path + x->d_name + "/", listOfFiles);
                 if (x->d_type == DT_REG) {
-                    // TO-DO: Make list of acceptable file endings
-                    if (std::string(x->d_name).substr(std::string(x->d_name).length() - 4) == ".cpp") {
+                    // TODO: Make list of acceptable file endings
+                    if (std::string(x->d_name).substr(std::string(x->d_name).length() - 4) == ".cpp" || std::string(x->d_name).substr(std::string(x->d_name).length() - 2) == ".h") {
                         listOfFiles->push_back(path + x->d_name);
                     }
                 }
