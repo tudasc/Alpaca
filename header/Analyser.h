@@ -12,6 +12,7 @@ namespace analyse{
         std::vector<std::string> params;
         std::string body;
         std::vector<std::string> location;
+        std::string filenameOfDeclaration;
         std::string filename;
         std::string scope;
         std::string getAsString(){
@@ -29,6 +30,16 @@ namespace analyse{
             output += "\nFilename:      " + filename + "\n";
             return output;
         };
+        bool isCorrectDeclaration(const FunctionInstance& decl){
+            // TODO: implement logic that checks if the given FunctionInstance is the Declaration of this Instance
+            return false;
+        }
+    };
+
+    struct file {
+        std::string name;
+        std::string fullPath;
+        std::vector <FunctionInstance> functions;
     };
 
     class Analyser{

@@ -50,9 +50,12 @@ public:
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
         // skip this function, if it's declared in the header files
-        if(!Context->getSourceManager().isInMainFile(functionDecl->getLocation())){
+        if(!Context->getSourceManager().isInMainFile(functionDecl->getLocation()) || !functionDecl->hasBody()){
             return true;
         }
+
+        // TODO: reminder that this exists
+        functionDecl->isThisDeclarationADefinition();
 
         FunctionInstance functionInstance;
 
@@ -184,9 +187,8 @@ int main(int argc, const char **argv) {
         newCD = CompilationDatabase::loadFromDirectory(std::filesystem::current_path().string(), errorMessage);
     }
 
-
     ClangTool oldTool(*oldCD,
-                 oldFiles);
+                      oldFiles);
     oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, result["oldDir"].as<std::string>()).get());
 
     ClangTool newTool(*newCD,
