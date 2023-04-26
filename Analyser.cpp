@@ -22,7 +22,7 @@ namespace analyse{
         for (auto const &x: oldProgram) {
             FunctionInstance func = x.second;
             // skip this function if the old instance was private, because it couldn't have been used by anyone
-            if(func.scope == "private" || func.name == "main"){
+            if(func.scope == "private" || func.name == "main" || func.isDeclaration){
                 continue;
             }
 
@@ -66,6 +66,9 @@ namespace analyse{
         std::string currentHighest = "";
         double currentHighestValue = 0;
         for(auto const &newFunc : newProgram){
+            if(newFunc.second.isDeclaration){
+                continue;
+            }
             if(docEnabled) {
                 double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc.second);
 
@@ -98,6 +101,9 @@ namespace analyse{
         FunctionInstance currentHighest;
         double currentHighestValue = 0;
         for(auto const &newFunc : funcSubset){
+            if(newFunc.isDeclaration){
+                continue;
+            }
             double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
 
             if(percentageDifference >= percentageCutOff){
@@ -126,6 +132,9 @@ namespace analyse{
         std::string output = "";
         // check if there is an exact match
         for (const auto &item: newProgram){
+            if(item.second.isDeclaration){
+                continue;
+            }
             if(item.second.qualifiedName == func.qualifiedName){
                 // function header is an exact match
                 if(compareParams(func, item.second).empty()){
@@ -196,6 +205,7 @@ namespace analyse{
     }
 
     std::string Analyser::compareFile(const FunctionInstance& func, const FunctionInstance& newFunc){
+        // TODO: Include declaration movement
         return (func.filename != newFunc.filename) ? "The function " + func.name + " has moved from the file " +  func.filename + " to the file " + newFunc.filename + "\n" : "";
     }
 
