@@ -5,6 +5,7 @@
 #include "header/HelperFunctions.h"
 
 namespace helper {
+
     void listFiles(const std::string &path, std::vector<std::string> *listOfFiles) {
         if (auto dir = opendir(path.c_str())) {
             while (auto x = readdir(dir)) {
@@ -21,10 +22,10 @@ namespace helper {
         }
     }
 
-    std::string getAllParamsAsString(const std::vector<std::string>& params){
+    std::string getAllParamsAsString(const std::vector<std::pair<std::string, std::string>>& params){
         std::string output = "[";
         for (const auto &item: params){
-            output += item + ", ";
+            output += item.first + " " + item.second + ", ";
         }
         return output.substr(0, output.length()-2) + "]";
     }
@@ -72,5 +73,4 @@ namespace helper {
         code.erase(std::remove_if(code.begin(), code.end(), ::isspace), code.end());
         return code;
     }
-
 }

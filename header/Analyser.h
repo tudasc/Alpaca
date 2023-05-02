@@ -14,10 +14,10 @@ namespace analyse{
         std::string name;
         std::string qualifiedName;
         std::string returnType;
-        std::vector<std::string> params;
+        std::vector<std::pair<std::string, std::string>> params;
         std::string body;
         std::vector<std::string> location;
-        std::vector<const FunctionInstance*> declarations;
+        std::vector<FunctionInstance> declarations;
         std::string filename;
         std::string scope;
         std::string getAsString(){
@@ -27,7 +27,7 @@ namespace analyse{
             output += "Return Type:   " + returnType;
             output += "\nParams:        ";
             for (const auto &item: params){
-                output += item + " ";
+                output += item.first + " " + item.second + " ";
             }
             output += "\nFull Location: ";
             for (const auto &item: location){
@@ -38,7 +38,7 @@ namespace analyse{
             if(!isDeclaration){
                 output += "\nHas declarations in:  ";
                 for (const auto &item: declarations){
-                    output += item->filename + "--";
+                    output += item.filename + "--";
                 }
             }
             output += "\n";
@@ -69,7 +69,7 @@ namespace analyse{
     class Analyser{
 
         public:
-            void compareVersionsWithDoc(bool docEnabled);
+            void compareVersionsWithDoc(bool docEnabled, bool includePrivate);
             Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram);
 
         private:
@@ -83,8 +83,9 @@ namespace analyse{
             static std::string compareScope(const FunctionInstance& func, const FunctionInstance& newFunc);
             static std::string compareFile(const FunctionInstance& func, const FunctionInstance& newFunc);
             static std::string compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static std::string compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc);
 
-            std::multimap<std::string, FunctionInstance> oldProgram;
+        std::multimap<std::string, FunctionInstance> oldProgram;
             std::multimap<std::string, FunctionInstance> newProgram;
 
     };
