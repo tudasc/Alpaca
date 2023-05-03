@@ -70,20 +70,20 @@ namespace analyse{
 
         public:
             void compareVersionsWithDoc(bool docEnabled, bool includePrivate);
-            Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram);
+            Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram, bool JSONOutput);
 
         private:
             std::pair<std::string, double> findBody(const FunctionInstance& oldBody, bool docEnabled);
-            std::string compareOverloadedFunctionHeader(const FunctionInstance& func);
-            static std::string compareFunctionHeader(const FunctionInstance&, const FunctionInstance&);
-            static std::string compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc);
+            bool compareOverloadedFunctionHeader(const FunctionInstance& func);
+            static bool compareFunctionHeader(const FunctionInstance&, const FunctionInstance&);
+            static bool compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc);
             static std::pair<FunctionInstance, double>findBody(const FunctionInstance& oldFunc, const std::vector<FunctionInstance>& funcSubset);
-            static std::string compareParams(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static std::string compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static std::string compareScope(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static std::string compareFile(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static std::string compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static std::string compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static bool compareParams(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
+            static bool compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static bool compareScope(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static bool compareFile(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static bool compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static bool compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc);
 
         std::multimap<std::string, FunctionInstance> oldProgram;
             std::multimap<std::string, FunctionInstance> newProgram;

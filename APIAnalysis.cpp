@@ -290,10 +290,9 @@ int main(int argc, const char **argv) {
     assignDeclarations(newProgram);
 
     // Analysing
-    Analyser analyser = Analyser(oldProgram, newProgram);
+    Analyser analyser = Analyser(oldProgram, newProgram, false);
 
     analyser.compareVersionsWithDoc(docEnabled, outputPrivateFunctions);
 
-    outs()<<"\n";
     return 0;
 }
