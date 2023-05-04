@@ -178,6 +178,7 @@ int main(int argc, const char **argv) {
     options.add_options()
             ("doc, deep-overload-comparison", "Enables the statistical comparison of function bodies")
             ("ipf,include-private-functions", "Include private functions in the output")
+            ("json,output-JSON", "Output the analysis in a custom JSON format")
             ("newDir, newDirectory", "Path to the newer version of the project - REQUIRED", cxxopts::value<std::string>())
             ("oldDir, oldDirectory", "Path to the older version of the project - REQUIRED", cxxopts::value<std::string>())
             ("oldCD, oldCompilationDatabase", "Path to the compilation database of the old directory", cxxopts::value<std::string>())
@@ -215,6 +216,8 @@ int main(int argc, const char **argv) {
     bool docEnabled = result["doc"].as<bool>();
 
     bool outputPrivateFunctions = result["ipf"].as<bool>();
+
+    bool jsonOutput = result["json"].as<bool>();
 
     std::multimap<std::string, FunctionInstance> oldProgram;
     std::multimap<std::string, FunctionInstance> newProgram;
@@ -290,7 +293,7 @@ int main(int argc, const char **argv) {
     assignDeclarations(newProgram);
 
     // Analysing
-    Analyser analyser = Analyser(oldProgram, newProgram, false);
+    Analyser analyser = Analyser(oldProgram, newProgram, jsonOutput);
 
     analyser.compareVersionsWithDoc(docEnabled, outputPrivateFunctions);
 

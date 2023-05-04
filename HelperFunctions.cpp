@@ -73,4 +73,12 @@ namespace helper {
         code.erase(std::remove_if(code.begin(), code.end(), ::isspace), code.end());
         return code;
     }
+
+    std::vector<std::string> convertPairIntoFlatVector(std::vector<std::pair<std::string, std::string>> vec){
+        std::vector<std::string> output;
+        for (const auto &item: vec){
+            output.push_back(item.first);
+        }
+        return output;
+    }
 }
