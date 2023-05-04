@@ -35,4 +35,6 @@ public:
     virtual void outputOverloadedDisclaimer(const analyse::FunctionInstance& func, std::string percentage) = 0;
 
     virtual bool printOut() = 0;
+
+    virtual bool endOfCurrentFunction() = 0;
 };

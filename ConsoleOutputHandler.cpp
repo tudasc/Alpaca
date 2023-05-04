@@ -10,13 +10,14 @@ using namespace std;
 class ConsoleOutputHandler : public OutputHandler {
 public:
     std::string output = "";
+    std::string completeOutput = "";
     std::string startingMessage = "";
 
     ConsoleOutputHandler(){}
 
     void initialiseFunctionInstance(const analyse::FunctionInstance &func) override {
         this->startingMessage = "-------------------------------------" + func.name + "-------------------------------------\n";
-        output += startingMessage;
+        output = startingMessage;
     }
 
     void outputNewParam(int position, const analyse::FunctionInstance& newFunc, int numberOfNewParams) override{
@@ -79,9 +80,14 @@ public:
     }
 
     bool printOut() override {
+        llvm::outs()<<completeOutput;
+        return true;
+    }
+
+    bool endOfCurrentFunction() override{
         if(output != startingMessage){
             output += "\n";
-            llvm::outs()<<output;
+            completeOutput += output;
             return true;
         }
         return false;

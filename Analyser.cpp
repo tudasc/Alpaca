@@ -11,9 +11,9 @@ using namespace analyse;
 
 const double percentageCutOff = 90;
 
-OutputHandler* outputHandler;
-
 namespace analyse{
+
+    OutputHandler* outputHandler;
 
     Analyser::Analyser(const std::multimap<std::string, FunctionInstance>& oldProgram,
                        const std::multimap<std::string, FunctionInstance>& newProgram,
@@ -74,6 +74,7 @@ namespace analyse{
             } else {
                 compareOverloadedFunctionHeader(func);
             }
+            outputHandler->endOfCurrentFunction();
         }
         outputHandler->printOut();
     }
@@ -289,7 +290,7 @@ namespace analyse{
         bool output = false;
         if(func.location.size() != newFunc.location.size()){
             outputHandler->outputNewNamespaces(newFunc, func);
-            output = true;
+            return true;
         }
         for(int i=0;i<func.location.size();i++){
             if(func.location.at(i) != newFunc.location.at(i)){
