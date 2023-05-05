@@ -3,22 +3,22 @@
 #include <vector>
 #include <algorithm>
 #include "header/HelperFunctions.h"
+#include <filesystem>
+#include <llvm/Support/raw_ostream.h>
+#include <csignal>
+
+namespace fs = std::filesystem;
 
 namespace helper {
 
-    void listFiles(const std::string &path, std::vector<std::string> *listOfFiles) {
-        if (auto dir = opendir(path.c_str())) {
-            while (auto x = readdir(dir)) {
-                if (x->d_name[0] == '.') continue;
-                if (x->d_type == DT_DIR) listFiles(path + x->d_name + "/", listOfFiles);
-                if (x->d_type == DT_REG) {
-                    // TODO: Make list of acceptable file endings
-                    if (std::string(x->d_name).substr(std::string(x->d_name).length() - 4) == ".cpp" || std::string(x->d_name).substr(std::string(x->d_name).length() - 2) == ".h") {
-                        listOfFiles->push_back(path + x->d_name);
-                    }
-                }
+    std::vector<std::string> acceptableFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx",".cppm"};
+
+    void listFiles(const std::string &path, std::vector<std::string>* listOfFiles){
+        for(const auto& entry : fs::recursive_directory_iterator(path)){
+            if(entry.is_directory() || !(std::find(acceptableFileEndings.begin(), acceptableFileEndings.end(), fs::path(entry.path()).extension()) != acceptableFileEndings.end())){
+                continue;
             }
-            closedir(dir);
+            listOfFiles->push_back(fs::canonical(entry.path()));
         }
     }
 

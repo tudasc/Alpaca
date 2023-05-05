@@ -5,8 +5,6 @@ project(api_analysis)
 
 set(CMAKE_CXX_STANDARD 17)
 
-configure_file(include/compile_flags.txt .)
-
 #wir benötigen clang als library
 find_package(Clang REQUIRED)
 #version sollte 14.0.X sein

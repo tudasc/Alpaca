@@ -173,7 +173,6 @@ void assignDeclarations(std::multimap<std::string, FunctionInstance>& functions)
 }
 
 int main(int argc, const char **argv) {
-
     cxxopts::Options options("APIAnalysis", "Compares two versions of a C++ API and prints out the differences");
     options.add_options()
             ("doc, deep-overload-comparison", "Enables the statistical comparison of function bodies")
@@ -248,13 +247,13 @@ int main(int argc, const char **argv) {
     // check if the compilation databases exist, otherwise use the standard provided in the build directory
     errorMessage = "Fatal error, the standard compilation database couldn't be loaded";
     if(!oldCD){
-        outs()<<"loaded the standard compilation database for the old project (c++)\n";
+        outs()<<"loaded an empty compilation database for the old project\n";
         // put a standard empty CompilationDatabase here
-        oldCD = CompilationDatabase::loadFromDirectory(std::filesystem::current_path().string(), errorMessage);
+        oldCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
     }
     if(!newCD){
-        outs()<<"loaded the standard compilation database for the new project (c++)\n";
-        newCD = CompilationDatabase::loadFromDirectory(std::filesystem::current_path().string(), errorMessage);
+        outs()<<"loaded an empty compilation database for the new project\n";
+        newCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
     }
 
     ClangTool oldTool(*oldCD,
@@ -271,6 +270,7 @@ int main(int argc, const char **argv) {
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
         oldTool.appendArgumentsAdjuster(adjuster);
     }
+
     oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, result["oldDir"].as<std::string>()).get());
 
     ClangTool newTool(*newCD,
