@@ -22,7 +22,7 @@ public:
 
     virtual void outputNewNamespaces(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) = 0;
 
-    virtual void outputNewFilename(const analyse::FunctionInstance& newFunc, std::string oldName) = 0;
+    virtual void outputNewFilename(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) = 0;
 
     virtual void outputNewDeclPositions(const analyse::FunctionInstance& newFunc, std::vector<std::string> addedDecl) = 0;
 

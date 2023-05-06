@@ -49,8 +49,8 @@ public:
                 + helper::getAllNamespacesAsString(newFunc.location) + "\n";
     }
 
-    void outputNewFilename(const analyse::FunctionInstance &newFunc, std::string oldName) override{
-        output += "The function definition moved files from " + oldName + " to " + newFunc.filename + "\n";
+    void outputNewFilename(const analyse::FunctionInstance &newFunc, const analyse::FunctionInstance& oldFunc) override{
+        output += "The function definition moved files from " + oldFunc.filename + " to " + newFunc.filename + "\n";
     }
 
     void outputNewDeclPositions(const analyse::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
