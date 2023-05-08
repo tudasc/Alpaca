@@ -78,6 +78,7 @@ public:
         // remove function in file 1
         RemoveAction removeAction = RemoveAction("function", helper::retrieveFunctionHeader(oldFunc));
         // insert function in file 2?
+        currentFunc->removeActions.push_back(removeAction);
     }
 
     void outputNewDeclPositions(const analyse::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
@@ -90,6 +91,7 @@ public:
 
     void outputDeletedFunction(const analyse::FunctionInstance &deletedFunc, bool overloaded) override {
         RemoveAction removeAction = RemoveAction("function", helper::retrieveFunctionHeader(deletedFunc));
+        currentFunc->removeActions.push_back(removeAction);
     }
 
     void outputOverloadedDisclaimer(const analyse::FunctionInstance &func, std::string percentage) override {
@@ -101,24 +103,16 @@ public:
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    vector<JSONFile> getFilesAsVector(){
-        vector<JSONFile> output;
-        for (const auto &item: files){
-            output.push_back(item.second);
-        }
-        return output;
-    }
-
     bool printOut() override {
+        vector<JSONFile> vec;
         // remove all empty files
         for(const auto &item : files){
-            if(item.second.functions.size() == 0){
-                files.erase(item.first);
+            if(item.second.functions.size() != 0){
+                vec.push_back(item.second);
             }
         }
-
         std::ofstream output("output.json");
-        json j = getFilesAsVector();
+        json j = vec;
         output << j << std::endl;
         return true;
     }

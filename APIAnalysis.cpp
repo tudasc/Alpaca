@@ -55,6 +55,8 @@ public:
             return true;
         }
 
+        outs()<<"Path in AST Traverser is: " + std::filesystem::current_path().string()<<"\n";
+
         FunctionInstance functionInstance;
 
         functionInstance.name = functionDecl->getNameAsString();
@@ -256,6 +258,8 @@ int main(int argc, const char **argv) {
         newCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
     }
 
+    outs()<<"Original Path is: " + std::filesystem::current_path().string()<<"\n";
+
     ClangTool oldTool(*oldCD,
                       oldFiles);
 
@@ -271,7 +275,7 @@ int main(int argc, const char **argv) {
         oldTool.appendArgumentsAdjuster(adjuster);
     }
 
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, result["oldDir"].as<std::string>()).get());
+    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).get());
 
     ClangTool newTool(*newCD,
                    newFiles);
@@ -287,7 +291,7 @@ int main(int argc, const char **argv) {
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
         newTool.appendArgumentsAdjuster(adjuster);
     }
-    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, result["newDir"].as<std::string>()).get());
+    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).get());
 
     assignDeclarations(oldProgram);
     assignDeclarations(newProgram);
