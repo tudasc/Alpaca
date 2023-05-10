@@ -25,14 +25,23 @@ public:
         + ". The complete new parameters are " + helper::getAllParamsAsString(newFunc.params) + "\n";
     }
 
-    void outputParamChange(int position, std::pair<std::string, std::string> oldParam, const analyse::FunctionInstance &newFunc) override {
-        output += "A parameter changed from " + oldParam.first + " " + oldParam.second + " to "
-        + newFunc.params.at(position).first + " " + newFunc.params.at(position).second + ". The new complete params are "
+    void outputParamChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance &newFunc) override {
+        output += "A parameter changed from " + oldParam.first + " " + oldParam.second.first + " to "
+        + newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first+ ". The new complete params are "
         + helper::getAllParamsAsString(newFunc.params) + "\n";
     }
 
-    void outputDeletedParam(int position, const std::vector<std::pair<std::string, std::string>> &oldParams, const analyse::FunctionInstance &newFunc, int numberOfDeletedParams) override {
-        output += "The parameter " + oldParams.at(position).first + " " + oldParams.at(position).second + " was deleted. The new complete parameters are "
+    void outputParamDefaultChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance &newFunc) override {
+
+        string oldValue = (oldParam.second.second.empty()) ? oldParam.first + " " + oldParam.second.first : oldParam.first + " " + oldParam.second.first + " = " + oldParam.second.second;
+        string newValue = (newFunc.params.at(position).second.second.empty()) ? newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first : newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first + " = " + newFunc.params.at(position).second.second;
+
+        output += "A default value of the param " + oldValue + " changed to " + newValue
+                + ". The new complete params are " + helper::getAllParamsAsString(newFunc.params) + "\n";
+    }
+
+    void outputDeletedParam(int position, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>> &oldParams, const analyse::FunctionInstance &newFunc, int numberOfDeletedParams) override {
+        output += "The parameter " + oldParams.at(position).first + " " + oldParams.at(position).second.first + " was deleted. The new complete parameters are "
                 + helper::getAllParamsAsString(newFunc.params) + "\n";
      }
 
