@@ -10,17 +10,17 @@ public:
 
     virtual void initialiseFunctionInstance(const analyse::FunctionInstance& func) = 0;
 
-    virtual void outputNewParam(int position, const analyse::FunctionInstance& newFunc, int numberOfNewParams) = 0;
+    virtual void outputNewParam(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) = 0;
 
-    virtual void outputParamChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance& newFunc) = 0;
+    virtual void outputParamChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) = 0;
 
-    virtual void outputParamDefaultChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance& newFunc) = 0;
+    virtual void outputParamDefaultChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) = 0;
 
-    virtual void outputDeletedParam(int position, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams, const analyse::FunctionInstance& newFunc, int numberOfDeletedParams) = 0;
+    virtual void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams) = 0;
 
     virtual void outputNewReturn(const analyse::FunctionInstance& newFunc, std::string oldReturn) = 0;
 
-    virtual void outputNewScope(const analyse::FunctionInstance& newFunc, std::string oldScope) = 0;
+    virtual void outputNewScope(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) = 0;
 
     virtual void outputNewNamespaces(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) = 0;
 

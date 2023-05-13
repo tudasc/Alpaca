@@ -55,8 +55,6 @@ public:
             return true;
         }
 
-        outs()<<"Path in AST Traverser is: " + std::filesystem::current_path().string()<<"\n";
-
         FunctionInstance functionInstance;
 
         functionInstance.name = functionDecl->getNameAsString();
@@ -267,8 +265,6 @@ int main(int argc, const char **argv) {
         outs()<<"loaded an empty compilation database for the new project\n";
         newCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
     }
-
-    outs()<<"Original Path is: " + std::filesystem::current_path().string()<<"\n";
 
     ClangTool oldTool(*oldCD,
                       oldFiles);

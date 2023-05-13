@@ -69,7 +69,7 @@ namespace nspace
     void switchedNamespaceTest(){}
     class movingNamespace{
     public:
-        int moveNamespace() {}
+        int moveNamespace() {return 0;}
     };
 }
 
