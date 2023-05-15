@@ -41,10 +41,9 @@ namespace analyse{
                 continue;
             }
 
-            outputHandler->initialiseFunctionInstance(func);
-
 
             if (newProgram.count(func.qualifiedName) <= 0) {
+                outputHandler->initialiseFunctionInstance(func);
                 auto bodyStatus = findBody(func, docEnabled);
                 // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
                 if (bodyStatus.first.empty()){
@@ -68,13 +67,15 @@ namespace analyse{
                         compareFunctionHeader(func, newFunc);
                     }
                 }
+                outputHandler->endOfCurrentFunction();
             } else if (newProgram.count(func.qualifiedName) == 1){
+                outputHandler->initialiseFunctionInstance(func);
                 FunctionInstance newFunc = newProgram.find(func.qualifiedName)->second;
                 compareFunctionHeader(func, newFunc);
+                outputHandler->endOfCurrentFunction();
             } else {
                 compareOverloadedFunctionHeader(func);
             }
-            outputHandler->endOfCurrentFunction();
         }
         outputHandler->printOut();
     }
@@ -113,6 +114,8 @@ namespace analyse{
             }
         }
 
+        //
+
         return std::make_pair(currentHighest, currentHighestValue);
     }
 
@@ -149,33 +152,72 @@ namespace analyse{
 
     bool Analyser::compareOverloadedFunctionHeader(const FunctionInstance& func) {
         std::vector<FunctionInstance> overloadedFunctions;
-        // check if there is an exact match
-        for (const auto &item: newProgram){
-            if(item.second.isDeclaration){
+        std::vector<FunctionInstance> oldOverloadedInstances;
+
+        bool matchFound=false;
+        for (auto old = oldProgram.begin(); old != oldProgram.end(); ) {
+            matchFound = false;
+            // check if there is an exact match
+            for (auto item = newProgram.begin(); item != newProgram.end(); ) {
+                if (item->second.isDeclaration) {
+                    continue;
+                }
+
+                // function header is an exact match
+                // TODO: how to handle the scenario that multiple files and namespaces have functions with the same name?
+                if (old->second.name == func.name && old->second.name == item->second.name && !compareParams(old->second, item->second, true)) {
+                    outputHandler->initialiseFunctionInstance(func);
+                    // proceed normally
+                    bool analysisResult = compareFunctionHeaderExceptParams(old->second, item->second);
+                    old = oldProgram.erase(old);
+                    newProgram.erase(item);
+                    matchFound = true;
+                    outputHandler->endOfCurrentFunction();
+                    break;
+                }else{
+                    ++item;
+                }
+            }
+            if(!matchFound){
+                ++old;
+            }
+        }
+
+        for (auto item = newProgram.begin(); item != newProgram.end(); ++item){
+            if(func.name == item->second.name){
+                overloadedFunctions.push_back(item->second);
+            }
+        }
+
+        for (auto item = oldProgram.begin(); item != oldProgram.end(); ++item){
+            if(func.name == item->second.name){
+                oldOverloadedInstances.push_back(item->second);
+            }
+        }
+
+        for (const auto &item: oldOverloadedInstances){
+            outputHandler->initialiseFunctionInstance(item);
+            if(overloadedFunctions.size() == 0){
+                outputHandler->outputDeletedFunction(func, true);
+                outputHandler->endOfCurrentFunction();
                 continue;
             }
-            if(item.second.qualifiedName == func.qualifiedName){
-                // function header is an exact match
-                if(!compareParams(func, item.second, true)){
-                    // proceed normally
-                    return compareFunctionHeaderExceptParams(func, item.second);
-                }
-                overloadedFunctions.push_back(item.second);
+
+            // if there isn't an exact match, find the nearest match
+            auto closest = findBody(item, overloadedFunctions);
+            if (closest.second != 0) {
+                // there is another function that fits, proceed to compare it normally
+                outputHandler->outputOverloadedDisclaimer(item, std::to_string(closest.second));
+                compareParams(item, closest.first, false);
+                compareFunctionHeaderExceptParams(item, closest.first);
+                // TODO: block for multiple old functions to be mapped to a single new function? (i.e. delete the here found function as well)
+            } else {
+                outputHandler->outputDeletedFunction(func, true);
             }
+            outputHandler->endOfCurrentFunction();
         }
-        // if there isn't an exact match, find the nearest match
-        auto closest = findBody(func, overloadedFunctions);
-        if(closest.second != 0){
-            int output = 0;
-            // there is another function that fits, proceed to compare it normally
-            outputHandler->outputOverloadedDisclaimer(func, std::to_string(closest.second));
-            output += compareParams(func, closest.first, false);
-            output += compareFunctionHeaderExceptParams(func, closest.first);
-            return output;
-        }else{
-            outputHandler->outputDeletedFunction(func, true);
-            return true;
-        }
+
+        return true;
     }
 
     bool Analyser::compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc){
