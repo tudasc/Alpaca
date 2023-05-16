@@ -15,8 +15,8 @@ namespace analyse{
 
     OutputHandler* outputHandler;
 
-    Analyser::Analyser(const std::multimap<std::string, FunctionInstance>& oldProgram,
-                       const std::multimap<std::string, FunctionInstance>& newProgram,
+    Analyser::Analyser(const std::vector<FunctionInstance>& oldProgram,
+                       const std::vector<FunctionInstance>& newProgram,
                        bool JSONOutput) {
         this->oldProgram = oldProgram;
         this->newProgram = newProgram;
@@ -27,11 +27,33 @@ namespace analyse{
         }
     }
 
-    void Analyser::compareVersionsWithDoc(bool docEnabled, bool includePrivate) {
-        matcher::getOptimalParamConversion(oldProgram.find("paramChange")->second.params, newProgram.find("paramChange")->second.params);
-        for (auto const &x: oldProgram) {
-            FunctionInstance func = x.second;
+    int findFunction(const std::vector<FunctionInstance>& set, std::string qualifiedName){
+        for(int i=0;i<set.size();i++){
+            if(set.at(i).qualifiedName == qualifiedName){
+                return i;
+            }
+        }
+        return -1;
+    }
 
+    int countFunctions(const std::vector<FunctionInstance>& set, std::string qualifiedName){
+        int counter=0;
+        for(const auto & i : set){
+            if(i.qualifiedName == qualifiedName){
+                counter++;
+            }
+        }
+        outs()<<qualifiedName<<"\n";
+        outs()<<counter<<"\n";
+        return counter;
+    }
+
+
+    void Analyser::compareVersionsWithDoc(bool docEnabled, bool includePrivate) {
+        int i=0;
+        //for (auto const &func: oldProgram) {
+        while(i<oldProgram.size()){
+            FunctionInstance func = oldProgram.at(i);
             if(func.scope == "private" && !includePrivate){
                 continue;
             }
@@ -41,16 +63,16 @@ namespace analyse{
                 continue;
             }
 
-
-            if (newProgram.count(func.qualifiedName) <= 0) {
+            if (countFunctions(newProgram, func.qualifiedName) <= 0) {
                 outputHandler->initialiseFunctionInstance(func);
                 auto bodyStatus = findBody(func, docEnabled);
                 // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
                 if (bodyStatus.first.empty()){
                     outputHandler->outputDeletedFunction(func, false);
                 } else {
+                    outs()<<findFunction(newProgram, bodyStatus.first)<<"\n";
                     // use the function found during the statistical analysis
-                    FunctionInstance newFunc = newProgram.find(bodyStatus.first)->second;
+                    FunctionInstance newFunc = newProgram.at(findFunction(newProgram, bodyStatus.first));
                     if(newFunc.name != func.name){
                         // further checks on the Header to ensure, that this is indeed a renamed function
                         if(!compareFunctionHeader(func, newFunc)){
@@ -68,53 +90,50 @@ namespace analyse{
                     }
                 }
                 outputHandler->endOfCurrentFunction();
-            } else if (newProgram.count(func.qualifiedName) == 1){
+            } else if (countFunctions(newProgram, func.qualifiedName) == 1){
                 outputHandler->initialiseFunctionInstance(func);
-                FunctionInstance newFunc = newProgram.find(func.qualifiedName)->second;
+                FunctionInstance newFunc = newProgram.at(findFunction(newProgram, func.qualifiedName));
                 compareFunctionHeader(func, newFunc);
                 outputHandler->endOfCurrentFunction();
             } else {
                 compareOverloadedFunctionHeader(func);
             }
+            i++;
         }
         outputHandler->printOut();
     }
-
-
 
     std::pair<std::string, double> Analyser::findBody(const FunctionInstance& oldFunc, bool docEnabled) {
         std::string currentHighest = "";
         double currentHighestValue = 0;
         for(auto const &newFunc : newProgram){
-            if(newFunc.second.isDeclaration){
+            if(newFunc.isDeclaration){
                 continue;
             }
             if(docEnabled) {
-                double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc.second);
+                double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
 
                 // prioritize functions that have the exact same name and header
                 // TODO: ask to make sure this is the correct way to handle this
-                if (oldFunc.name == newFunc.second.name) {
-                    return std::make_pair(newFunc.second.qualifiedName, percentageDifference);
+                if (oldFunc.name == newFunc.name) {
+                    return std::make_pair(newFunc.qualifiedName, percentageDifference);
                 }
 
                 if (percentageDifference >= percentageCutOff) {
                     if (percentageDifference > currentHighestValue) {
                         currentHighestValue = percentageDifference;
-                        currentHighest = newFunc.second.qualifiedName;
+                        currentHighest = newFunc.qualifiedName;
                     }
                 }
             }else{
                 // strip code of comments / empty spaces and then compares them
-                if(helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.second.body)) == helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body))){
+                if(helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body)) == helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body))){
                     currentHighestValue = 100;
-                    currentHighest = newFunc.second.qualifiedName;
+                    currentHighest = newFunc.qualifiedName;
                     break;
                 }
             }
         }
-
-        //
 
         return std::make_pair(currentHighest, currentHighestValue);
     }
@@ -155,46 +174,48 @@ namespace analyse{
         std::vector<FunctionInstance> oldOverloadedInstances;
 
         bool matchFound=false;
-        for (auto old = oldProgram.begin(); old != oldProgram.end(); ) {
+        // TODO convert to while
+        int i = 0;
+        while(i<oldProgram.size()) {
             matchFound = false;
             // check if there is an exact match
-            for (auto item = newProgram.begin(); item != newProgram.end(); ) {
-                if (item->second.isDeclaration) {
+            int j = 0;
+            while(j<newProgram.size()) {
+                if (newProgram.at(j).isDeclaration) {
                     continue;
                 }
 
                 // function header is an exact match
                 // TODO: how to handle the scenario that multiple files and namespaces have functions with the same name?
-                if (old->second.name == func.name && old->second.name == item->second.name && !compareParams(old->second, item->second, true)) {
+                if(oldProgram.at(i).name == func.name && oldProgram.at(i).name == newProgram.at(j).name && !compareParams(oldProgram.at(i), newProgram.at(j), true)) {
                     outputHandler->initialiseFunctionInstance(func);
                     // proceed normally
-                    bool analysisResult = compareFunctionHeaderExceptParams(old->second, item->second);
-                    old = oldProgram.erase(old);
-                    newProgram.erase(item);
+                    bool analysisResult = compareFunctionHeaderExceptParams(oldProgram.at(i), newProgram.at(j));
+                    oldProgram.erase(oldProgram.begin() + i);
+                    newProgram.erase(newProgram.begin() + j);
                     matchFound = true;
                     outputHandler->endOfCurrentFunction();
                     break;
                 }else{
-                    ++item;
+                    j++;
                 }
             }
             if(!matchFound){
-                ++old;
+                i++;
             }
         }
-
+        // TODO: convert to while
         for (auto item = newProgram.begin(); item != newProgram.end(); ++item){
-            if(func.name == item->second.name){
-                overloadedFunctions.push_back(item->second);
+            if(func.name == item->name){
+                overloadedFunctions.push_back(*item);
             }
         }
 
         for (auto item = oldProgram.begin(); item != oldProgram.end(); ++item){
-            if(func.name == item->second.name){
-                oldOverloadedInstances.push_back(item->second);
+            if(func.name == item->name){
+                oldOverloadedInstances.push_back(*item);
             }
         }
-
         for (const auto &item: oldOverloadedInstances){
             outputHandler->initialiseFunctionInstance(item);
             if(overloadedFunctions.size() == 0){

@@ -74,7 +74,7 @@ namespace analyse{
 
         public:
             void compareVersionsWithDoc(bool docEnabled, bool includePrivate);
-            Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram, bool JSONOutput);
+            Analyser( const std::vector<FunctionInstance>& oldProgram, const std::vector<FunctionInstance>& newProgram, bool JSONOutput);
 
         private:
             std::pair<std::string, double> findBody(const FunctionInstance& oldBody, bool docEnabled);
@@ -89,8 +89,8 @@ namespace analyse{
             static bool compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc);
             static bool compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc);
 
-        std::multimap<std::string, FunctionInstance> oldProgram;
-            std::multimap<std::string, FunctionInstance> newProgram;
+        std::vector<FunctionInstance> oldProgram;
+        std::vector<FunctionInstance> newProgram;
 
     };
 }
