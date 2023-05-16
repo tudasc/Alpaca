@@ -43,8 +43,6 @@ namespace analyse{
                 counter++;
             }
         }
-        outs()<<qualifiedName<<"\n";
-        outs()<<counter<<"\n";
         return counter;
     }
 
@@ -54,12 +52,15 @@ namespace analyse{
         //for (auto const &func: oldProgram) {
         while(i<oldProgram.size()){
             FunctionInstance func = oldProgram.at(i);
+
             if(func.scope == "private" && !includePrivate){
+                i++;
                 continue;
             }
 
             // skip this function if the old instance was private, because it couldn't have been used by anyone
             if(func.name == "main" || func.isDeclaration){
+                i++;
                 continue;
             }
 
@@ -98,7 +99,7 @@ namespace analyse{
             } else {
                 compareOverloadedFunctionHeader(func);
             }
-            i++;
+            ++i;
         }
         outputHandler->printOut();
     }
@@ -106,7 +107,8 @@ namespace analyse{
     std::pair<std::string, double> Analyser::findBody(const FunctionInstance& oldFunc, bool docEnabled) {
         std::string currentHighest = "";
         double currentHighestValue = 0;
-        for(auto const &newFunc : newProgram){
+        for(int i=0;i<newProgram.size();i++){
+            FunctionInstance newFunc = newProgram.at(i);
             if(newFunc.isDeclaration){
                 continue;
             }
@@ -182,6 +184,7 @@ namespace analyse{
             int j = 0;
             while(j<newProgram.size()) {
                 if (newProgram.at(j).isDeclaration) {
+                    j++;
                     continue;
                 }
 
@@ -204,21 +207,21 @@ namespace analyse{
                 i++;
             }
         }
-        // TODO: convert to while
-        for (auto item = newProgram.begin(); item != newProgram.end(); ++item){
-            if(func.name == item->name){
-                overloadedFunctions.push_back(*item);
+
+        for (auto & item : newProgram){
+            if(func.name == item.name){
+                overloadedFunctions.push_back(item);
             }
         }
 
-        for (auto item = oldProgram.begin(); item != oldProgram.end(); ++item){
-            if(func.name == item->name){
-                oldOverloadedInstances.push_back(*item);
+        for (auto & item : oldProgram){
+            if(func.name == item.name){
+                oldOverloadedInstances.push_back(item);
             }
         }
         for (const auto &item: oldOverloadedInstances){
             outputHandler->initialiseFunctionInstance(item);
-            if(overloadedFunctions.size() == 0){
+            if(overloadedFunctions.empty()){
                 outputHandler->outputDeletedFunction(func, true);
                 outputHandler->endOfCurrentFunction();
                 continue;
