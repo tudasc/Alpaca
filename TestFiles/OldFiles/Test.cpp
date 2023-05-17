@@ -46,6 +46,11 @@ void overloaded(int x){
 
 }
 
+int overloaded(int w, bool z, bool y){
+    int b = w + z + y;
+    return b;
+}
+
 class test {
 public:
     void somethingPublic(){
