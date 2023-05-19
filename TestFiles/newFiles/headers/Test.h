@@ -12,5 +12,3 @@ void paramChange(bool x);
 void overloaded(int x, int y);
 
 void overloaded(int x, int y, int z);
-
-
