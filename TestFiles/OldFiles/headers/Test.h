@@ -1,12 +1,12 @@
 #include <stdbool.h>
 
-void differentNumberParams(int check);
+void differentNumberParams();
 
 int newReturn(bool* one, int two);
 
-int itsRenamed();
+static int rename();
 
-void paramChange(bool x);
+extern const void paramChange(int x, bool z, int p);
 
 void overloaded(int x);
 

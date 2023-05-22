@@ -10,7 +10,7 @@ void newReturn(bool* one, int two) {
     *one = false;
 }
 
-int itsRenamed(){
+static int itsRenamed(){
     int two = 0;
     int random = 4;
     return 0;
@@ -51,12 +51,16 @@ private:
     void somethingPublic(){
         int i = 10;
     }
+    virtual void virtualFunc();
 };
 
 namespace newNspace{
+    void switchedNamespaceTest(){
+        int x = 10+10;
+    }
     class movingNamespace{
     public:
-        void moveNamespace() {}
+        int moveNamespace() const {return 0;}
     };
 }
 

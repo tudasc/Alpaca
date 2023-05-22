@@ -21,6 +21,8 @@ namespace analyse{
         std::vector<FunctionInstance> declarations;
         std::string filename;
         std::string scope;
+        std::string storageClass;
+        std::string memberFunctionSpecifier;
         std::string getAsString(){
             std::string output;
             output += "\n-----------------" + name + "-----------------\n";
@@ -48,16 +50,16 @@ namespace analyse{
             output += "\n";
             return output;
         };
-        bool isCorrectDeclaration(const FunctionInstance& decl) const {
+        [[nodiscard]] bool isCorrectDeclaration(const FunctionInstance& decl) const {
 
-            if(!decl.isDeclaration){
+            if (!decl.isDeclaration) {
                 return false;
             }
 
             // check if the params match
-            if(params.size() == decl.params.size()){
+            if (params.size() == decl.params.size()) {
                 for (int i = 0; i < params.size(); ++i) {
-                    if(params.at(i) != decl.params.at(i)){
+                    if (params.at(i) != decl.params.at(i)) {
                         return false;
                     }
                 }
@@ -66,7 +68,8 @@ namespace analyse{
             }
 
             // check if the rest of the functions match (qualified name check includes the location check)
-            return (decl.qualifiedName == qualifiedName && decl.returnType == returnType && decl.scope == scope);
+            return (decl.qualifiedName == qualifiedName && decl.returnType == returnType && decl.scope == scope &&
+                    storageClass == storageClass);
         }
     };
 
@@ -79,17 +82,20 @@ namespace analyse{
         private:
             std::pair<std::string, double> findBody(const FunctionInstance& oldBody, bool docEnabled);
             bool compareOverloadedFunctionHeader(const FunctionInstance& func);
-            static bool compareFunctionHeader(const FunctionInstance&, const FunctionInstance&);
-            static bool compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static bool compareFunctionHeader(const FunctionInstance&, const FunctionInstance&, bool internalUse);
+            static bool compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
             static std::pair<FunctionInstance, double>findBody(const FunctionInstance& oldFunc, const std::vector<FunctionInstance>& funcSubset);
             static bool compareParams(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static bool compareScope(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static bool compareFile(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static bool compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc);
-            static bool compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc);
+            static bool compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
+            static bool compareScope(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
+            static bool compareFile(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
+            static bool compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
+            static bool compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
+            static bool compareStorageClass(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
+            static bool compareFunctionSpecifier(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
 
-        std::vector<FunctionInstance> oldProgram;
+
+            std::vector<FunctionInstance> oldProgram;
         std::vector<FunctionInstance> newProgram;
 
     };

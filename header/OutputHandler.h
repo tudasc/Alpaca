@@ -36,6 +36,10 @@ public:
 
     virtual void outputOverloadedDisclaimer(const analyse::FunctionInstance& func, std::string percentage) = 0;
 
+    virtual void outputStorageClassChange(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) = 0;
+
+    virtual void outputFunctionSpecifierChange(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) = 0;
+
     virtual bool printOut() = 0;
 
     virtual bool endOfCurrentFunction() = 0;

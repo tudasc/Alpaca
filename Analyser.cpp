@@ -27,29 +27,40 @@ namespace analyse{
         }
     }
 
-    bool checkIfADeclarationMatches(const vector<FunctionInstance>& oldDecl, const vector<FunctionInstance>& newDecl){
-        for (const auto &oldItem: oldDecl){
-            for (const auto &newItem: newDecl){
+    bool checkIfADeclarationMatches(const FunctionInstance& oldDecl, const FunctionInstance& newDecl){
+        for (const auto &oldItem: oldDecl.declarations){
+            for (const auto &newItem: newDecl.declarations){
                 if(oldItem.filename == newItem.filename){
                     return true;
                 }
             }
+        }
+        //if the given FunctionInstances are declarations it has to lack a viable definition which is a separate case
+        if(oldDecl.isDeclaration && newDecl.isDeclaration && oldDecl.filename == newDecl.filename){
+            return true;
         }
         return false;
     }
 
     bool isFunctionOverloaded(const FunctionInstance& oldFunc, const FunctionInstance& newFunc){
         // overloaded Functions have to have the same qualified name (i.e. be in the same namespace) and share at least one declaration position (definitions don´t have to be in the same file) : if one of the declarations is empty, the definition is the declaration
-        return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc.declarations, newFunc.declarations);
+        return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc, newFunc);
     }
 
     int findFunction(const std::vector<FunctionInstance>& set, const std::string& qualifiedName){
+        int tempSafe = -1;
         for(int i=0;i<set.size();i++){
             if(set.at(i).qualifiedName == qualifiedName){
-                return i;
+                // prefer definitions to declarations if one is found
+                if(!set.at(i).isDeclaration){
+                    return i;
+                }else{
+                    tempSafe = i;
+                }
             }
         }
-        return -1;
+
+        return tempSafe;
     }
 
     int countFunctions(const std::vector<FunctionInstance>& set, const FunctionInstance& func){
@@ -74,11 +85,11 @@ namespace analyse{
             }
 
             // skip this function if the old instance was private, because it couldn't have been used by anyone
-            if(func.name == "main" || func.isDeclaration){
+            if(func.name == "main"){
                 i++;
                 continue;
             }
-            int v = countFunctions(newProgram, func);
+            auto test = countFunctions(newProgram, func);
             if (countFunctions(newProgram, func) <= 0) {
                 outputHandler->initialiseFunctionInstance(func);
                 auto bodyStatus = findBody(func, docEnabled);
@@ -90,7 +101,7 @@ namespace analyse{
                     FunctionInstance newFunc = newProgram.at(findFunction(newProgram, bodyStatus.first));
                     if(newFunc.name != func.name){
                         // further checks on the Header to ensure, that this is indeed a renamed function
-                        if(!compareFunctionHeader(func, newFunc)){
+                        if(!compareFunctionHeader(func, newFunc, true)){
                             if(docEnabled) {
                                 outputHandler->outputRenamedFunction(newFunc, func.name, std::to_string(bodyStatus.second));
                             }else{
@@ -101,19 +112,20 @@ namespace analyse{
                             outputHandler->outputDeletedFunction(func, false);
                         }
                     } else{
-                        compareFunctionHeader(func, newFunc);
+                        compareFunctionHeader(func, newFunc, false);
                     }
                 }
                 outputHandler->endOfCurrentFunction();
+                ++i;
             } else if (countFunctions(newProgram, func) == 1){
                 outputHandler->initialiseFunctionInstance(func);
                 FunctionInstance newFunc = newProgram.at(findFunction(newProgram, func.qualifiedName));
-                compareFunctionHeader(func, newFunc);
+                compareFunctionHeader(func, newFunc, false);
                 outputHandler->endOfCurrentFunction();
+                ++i;
             } else {
                 compareOverloadedFunctionHeader(func);
             }
-            ++i;
         }
         outputHandler->printOut();
     }
@@ -175,12 +187,12 @@ namespace analyse{
     }
 
 
-    bool Analyser::compareFunctionHeader(const FunctionInstance& func, const FunctionInstance& newFunc) {
+    bool Analyser::compareFunctionHeader(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse) {
         int output = 0;
         // compare the params without overloading
-        output += compareParams(func, newFunc, false);
+        output += compareParams(func, newFunc, internalUse);
 
-        output += compareFunctionHeaderExceptParams(func, newFunc);
+        output += compareFunctionHeaderExceptParams(func, newFunc, internalUse);
 
         return output;
     }
@@ -206,7 +218,7 @@ namespace analyse{
                 && oldProgram.at(i).returnType ==  newProgram.at(j).returnType && !compareParams(oldProgram.at(i), newProgram.at(j), true)) {
                     outputHandler->initialiseFunctionInstance(func);
                     // proceed normally
-                    bool analysisResult = compareFunctionHeaderExceptParams(oldProgram.at(i), newProgram.at(j));
+                    bool analysisResult = compareFunctionHeaderExceptParams(oldProgram.at(i), newProgram.at(j), false);
                     oldProgram.erase(oldProgram.begin() + i);
                     newProgram.erase(newProgram.begin() + j);
                     matchFound = true;
@@ -250,7 +262,7 @@ namespace analyse{
                 // there is another function that fits, proceed to compare it normally
                 outputHandler->outputOverloadedDisclaimer(item, std::to_string(closest.second));
                 compareParams(item, closest.first, false);
-                compareFunctionHeaderExceptParams(item, closest.first);
+                compareFunctionHeaderExceptParams(item, closest.first, false);
                 // TODO: block for multiple old functions to be mapped to a single new function? (i.e. delete the here found function as well)
             } else {
                 outputHandler->outputDeletedFunction(item, true);
@@ -261,19 +273,24 @@ namespace analyse{
         return true;
     }
 
-    bool Analyser::compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc){
+    bool Analyser::compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
         int output = 0;
 
-        output += compareReturnType(func, newFunc);
+        // TODO: Evaluate which of these should be included in the Header Checks
+        output += compareReturnType(func, newFunc, internalUse);
 
-        output += compareScope(func, newFunc);
+        output += compareScope(func, newFunc, internalUse);
 
-        output += compareNamespaces(func, newFunc);
+        output += compareNamespaces(func, newFunc, internalUse);
 
-        output += compareFile(func, newFunc);
+        output += compareFile(func, newFunc, internalUse);
 
         // Declarations are not part of the function header and should therefore not be included in the check of function header similarity
-        compareDeclarations(func, newFunc);
+        compareDeclarations(func, newFunc, internalUse);
+
+        output += compareStorageClass(func, newFunc, internalUse);
+
+        output += compareFunctionSpecifier(func, newFunc, internalUse);
 
         return output;
     }
@@ -282,7 +299,7 @@ namespace analyse{
         bool output = false;
         vector<matcher::Operation> operations = matcher::getOptimalParamConversion(func.params, newFunc.params);
 
-        if(operations.size() != 0){
+        if(!operations.empty()){
             if(internalUse){
                 return true;
             }
@@ -313,39 +330,39 @@ namespace analyse{
         return output;
     }
 
-    bool Analyser::compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc) {
+    bool Analyser::compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse) {
         if(newFunc.returnType != func.returnType) {
-            outputHandler->outputNewReturn(newFunc, func.returnType);
+            if(!internalUse) outputHandler->outputNewReturn(newFunc, func.returnType);
             return true;
         }
         return false;
     }
 
-    bool Analyser::compareScope(const FunctionInstance& func, const FunctionInstance& newFunc){
+    bool Analyser::compareScope(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
         if(func.scope != newFunc.scope){
-            outputHandler->outputNewScope(newFunc, func);
+            if(!internalUse) outputHandler->outputNewScope(newFunc, func);
             return true;
         }
         return false;
     }
 
-    bool Analyser::compareFile(const FunctionInstance& func, const FunctionInstance& newFunc){
+    bool Analyser::compareFile(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
         if(func.filename != newFunc.filename) {
-            outputHandler->outputNewFilename(newFunc, func);
+            if(!internalUse) outputHandler->outputNewFilename(newFunc, func);
             return true;
         }
         return false;
     }
 
-    bool Analyser::compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc){
+    bool Analyser::compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
         bool output = false;
         if(func.location.size() != newFunc.location.size()){
-            outputHandler->outputNewNamespaces(newFunc, func);
+            if(!internalUse) outputHandler->outputNewNamespaces(newFunc, func);
             return true;
         }
         for(int i=0;i<func.location.size();i++){
             if(func.location.at(i) != newFunc.location.at(i)){
-                outputHandler->outputNewNamespaces(newFunc, func);
+                if(!internalUse) outputHandler->outputNewNamespaces(newFunc, func);
                 output = true;
             }
         }
@@ -355,8 +372,12 @@ namespace analyse{
     std::vector<std::string> compareFilenameVectors(const std::vector<FunctionInstance>& decl1, const std::vector<FunctionInstance>& decl2){
         std::vector<std::string> output;
         for(const auto& oldDecl : decl1){
+            if(!oldDecl.isDeclaration) continue;
+
             bool found = false;
             for(const auto& newDecl : decl2){
+                if(!newDecl.isDeclaration) continue;
+
                 if(oldDecl.filename == newDecl.filename){
                     found = true;
                 }
@@ -368,21 +389,37 @@ namespace analyse{
         return output;
     }
 
-    bool Analyser::compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc){
+    bool Analyser::compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
         auto deletedDecl = compareFilenameVectors(func.declarations, newFunc.declarations);
         auto newDecl = compareFilenameVectors(newFunc.declarations, func.declarations);
 
         bool output = false;
 
-        if(deletedDecl.size() > 0){
-            outputHandler->outputDeletedDeclPositions(newFunc, deletedDecl, func);
+        if(!deletedDecl.empty()){
+            if(!internalUse) outputHandler->outputDeletedDeclPositions(newFunc, deletedDecl, func);
             output = true;
         }
 
-        if(newDecl.size() > 0){
-            outputHandler->outputNewDeclPositions(newFunc, newDecl);
+        if(!newDecl.empty()){
+            if(!internalUse) outputHandler->outputNewDeclPositions(newFunc, newDecl);
             output = true;
         }
         return output;
+    }
+
+    bool Analyser::compareStorageClass(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
+        if(func.storageClass != newFunc.storageClass){
+            if(!internalUse) outputHandler->outputStorageClassChange(newFunc, func);
+            return true;
+        }
+        return false;
+    }
+
+    bool Analyser::compareFunctionSpecifier(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
+        if(func.memberFunctionSpecifier != newFunc.memberFunctionSpecifier){
+            if(!internalUse) outputHandler->outputStorageClassChange(newFunc, func);
+            return true;
+        }
+        return false;
     }
 }

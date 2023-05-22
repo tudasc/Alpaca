@@ -131,11 +131,19 @@ public:
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
+    void outputStorageClassChange(const analyse::FunctionInstance &newFunc, const analyse::FunctionInstance &oldFunc) override {
+        // TODO: is this a replacement?
+    }
+
+    void outputFunctionSpecifierChange(const analyse::FunctionInstance &newFunc, const analyse::FunctionInstance &oldFunc) override{
+        // TODO: is this a replacement?
+    }
+
     bool printOut() override {
         vector<JSONFile> vec;
         // remove all empty files
         for(const auto &item : files){
-            if(item.second.functions.size() != 0){
+            if(!item.second.functions.empty()){
                 vec.push_back(item.second);
             }
         }
@@ -146,13 +154,13 @@ public:
     }
 
     bool endOfCurrentFunction() override{
-        if(currentFunc->replaceActions.size() != 0 || currentFunc->removeActions.size() != 0 || currentFunc->insertActions.size() != 0){
+        if(!currentFunc->replaceActions.empty() || !currentFunc->removeActions.empty() || !currentFunc->insertActions.empty()){
             files.find(currentFile)->second.functions.push_back(*currentFunc);
             return true;
         }
         return false;
     }
 
-    virtual ~JSONOutputHandler(){}
+    virtual ~JSONOutputHandler()= default;
 
 };

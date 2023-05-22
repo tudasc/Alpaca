@@ -5,9 +5,9 @@ void differentNumberParams(int check);
 
 void newReturn(bool* one, int two);
 
-int itsRenamed();
+static int itsRenamed();
 
-void paramChange(bool x);
+void paramChange(bool x, bool z, int w, int p);
 
 void overloaded(int x, int y);
 
