@@ -34,10 +34,10 @@ namespace analyse{
                     return true;
                 }
             }
-        }
-        //if the given FunctionInstances are declarations it has to lack a viable definition which is a separate case
-        if(oldDecl.isDeclaration && newDecl.isDeclaration && oldDecl.filename == newDecl.filename){
-            return true;
+            //if the given FunctionInstances are declarations it has to lack a viable definition which is a separate case
+            if(newDecl.isDeclaration && oldItem.filename == newDecl.filename){
+                return true;
+            }
         }
         return false;
     }
@@ -347,9 +347,21 @@ namespace analyse{
     }
 
     bool Analyser::compareFile(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
-        if(func.filename != newFunc.filename) {
-            if(!internalUse) outputHandler->outputNewFilename(newFunc, func);
+        if(func.isDeclaration && newFunc.isDeclaration){
+            return false;
+        }else if(func.isDeclaration){
+            // no action taken, because a function was first defined and so the definition cant change files
+            // TODO: add an output for "first defined" ?
+            return false;
+        }else if(newFunc.isDeclaration){
+            // the definition was deleted and only the declarations remain
+            if(!internalUse) outputHandler->outputDeletedFunction(func, false);
             return true;
+        }else {
+            if (func.filename != newFunc.filename) {
+                if (!internalUse) outputHandler->outputNewFilename(newFunc, func);
+                return true;
+            }
         }
         return false;
     }
@@ -416,8 +428,9 @@ namespace analyse{
     }
 
     bool Analyser::compareFunctionSpecifier(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse){
+        // TODO: changes here often come with one of the two not having definitions -> should there be a disclaimer for declaration only functions?
         if(func.memberFunctionSpecifier != newFunc.memberFunctionSpecifier){
-            if(!internalUse) outputHandler->outputStorageClassChange(newFunc, func);
+            if(!internalUse) outputHandler->outputFunctionSpecifierChange(newFunc, func);
             return true;
         }
         return false;

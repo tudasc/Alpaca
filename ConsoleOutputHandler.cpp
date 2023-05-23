@@ -74,10 +74,14 @@ public:
     }
 
     void outputDeletedFunction(const analyse::FunctionInstance &deletedFunc, bool overloaded) override {
+        if(deletedFunc.isDeclaration){
+            output += "A declaration in the file " + deletedFunc.filename + " was deleted";
+            return;
+        }
         if(overloaded){
             output += "The overloaded function with the params " + helper::getAllParamsAsString(deletedFunc.params) + " was deleted\n";
         } else {
-            output += "The function was deleted from the file " + deletedFunc.filename + "\n";
+            output += "A function definition was deleted from the file " + deletedFunc.filename + "\n";
         }
     }
 
@@ -96,7 +100,7 @@ public:
     }
 
     void outputFunctionSpecifierChange(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) override{
-        output += "The function specifier changed from " + oldFunc.memberFunctionSpecifier + " to " + oldFunc.memberFunctionSpecifier + "\n";
+        output += "The function specifier changed from " + oldFunc.memberFunctionSpecifier + " to " + newFunc.memberFunctionSpecifier + "\n";
     }
 
     bool printOut() override {

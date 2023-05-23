@@ -1,4 +1,7 @@
-#include "headers/Test.h"
+#include "headers/Header1.h"
+#include "headers/Header2.h"
+
+void differentNumberParams(int check);
 
 void differentNumberParams(int check){
     int i=0;
@@ -10,13 +13,17 @@ void newReturn(bool* one, int two) {
     *one = false;
 }
 
+double switchHeaderFile(int a){
+    return 0.0;
+}
+
 static int itsRenamed(){
     int two = 0;
     int random = 4;
     return 0;
 }
 
-void paramChange(bool x, bool z, int w, int p = 20){
+void paramChange(bool x, bool z, int w, int p){
     bool fe = x;
 }
 
@@ -36,32 +43,27 @@ int overloaded(int w, bool z, int y, bool i){
 
 namespace nspace
 {
-    class test{
-        void Func(int i) {
-            int b = i + b;
-            int v = b + i;}
-    };
+    void test::moveIntoClass(int i) {
+        int b = i + b;
+        int v = b + i;}
 }
 
-class test {
-private:
-    void somethingPrivate(){
-        int x = 10;
-    }
-    void somethingPublic(){
-        int i = 10;
-    }
-    virtual void virtualFunc();
-};
+void test::somethingPrivate(){
+    int x = 10;
+}
+void test::somethingPublic(){
+    int i = 10;
+}
+
+void test::virtualFunc() {
+    int x=10;
+}
 
 namespace newNspace{
     void switchedNamespaceTest(){
         int x = 10+10;
     }
-    class movingNamespace{
-    public:
-        int moveNamespace() const {return 0;}
-    };
+    int movingNamespace::moveNamespace() const {return 0;}
 }
 
 int main() {
