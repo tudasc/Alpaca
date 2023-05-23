@@ -6,17 +6,17 @@
 
 class OutputHandler {
 public:
-    OutputHandler() {}
+    OutputHandler() = default;
 
     virtual void initialiseFunctionInstance(const analyse::FunctionInstance& func) = 0;
 
-    virtual void outputNewParam(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) = 0;
+    virtual void outputNewParam(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analyse::FunctionInstance& newFunc) = 0;
 
-    virtual void outputParamChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) = 0;
+    virtual void outputParamChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analyse::FunctionInstance& newFunc) = 0;
 
-    virtual void outputParamDefaultChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) = 0;
+    virtual void outputParamDefaultChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analyse::FunctionInstance& newFunc) = 0;
 
-    virtual void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams) = 0;
+    virtual void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams, const analyse::FunctionInstance& newFunc) = 0;
 
     virtual void outputNewReturn(const analyse::FunctionInstance& newFunc, std::string oldReturn) = 0;
 

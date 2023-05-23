@@ -307,23 +307,23 @@ namespace analyse{
             for (const auto &item: operations){
                 if(item.type == matcher::Operation::Types::REPLACEMENT){
                     if(item.oldParam.first != item.newParam.first){
-                        outputHandler->outputParamChange(item.positionInOldParam, func, item.newParam);
+                        outputHandler->outputParamChange(item.positionInOldParam, func, item.newParam, newFunc);
                     }else{
                         // if the types are the same, the change is in the defaults
                         if(item.newParam.second.second.empty()){
                             // the default was removed -> TODO: treat as an addition?
-                            outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam);
+                            outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam, newFunc);
                         }else{
                             // both have a default, that itself changed OR there is a new default
-                            outputHandler->outputParamDefaultChange(item.positionInOldParam, func, item.newParam);
+                            outputHandler->outputParamDefaultChange(item.positionInOldParam, func, item.newParam, newFunc);
                         }
                     }
                 } else if(item.type == matcher::Operation::Types::INSERTION){
-                    outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam);
+                    outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam, newFunc);
                 } else if(item.type == matcher::Operation::Types::DELETION){
-                    outputHandler->outputDeletedParam(item.positionInOldParam, func.params);
+                    outputHandler->outputDeletedParam(item.positionInOldParam, func.params, newFunc);
                 }else{
-                    throw new std::exception;
+                    throw std::invalid_argument("An invalid argument was passed by the matcher::getOptimalParamConversion function");
                 }
             }
         }
