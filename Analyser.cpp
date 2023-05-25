@@ -298,6 +298,8 @@ namespace analysis{
 
             output += compareFunctionSpecifier(func, newFunc, internalUse);
 
+            compareConst(func, newFunc, internalUse);
+
             return output;
         }
 
@@ -441,6 +443,13 @@ namespace analysis{
             if (func.memberFunctionSpecifier != newFunc.memberFunctionSpecifier) {
                 if (!internalUse) outputHandler->outputFunctionSpecifierChange(newFunc, func);
                 return true;
+            }
+            return false;
+        }
+
+        bool compareConst(const FunctionInstance &func, const FunctionInstance &newFunc, bool internalUse){
+            if(func.isConst != newFunc.isConst){
+                if (!internalUse) outputHandler->outputFunctionConstChange(newFunc, func);
             }
             return false;
         }

@@ -156,6 +156,10 @@ public:
         // TODO: is this a replacement?
     }
 
+    void outputFunctionConstChange(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance &oldFunc) override {
+
+    }
+
     bool endOfCurrentFunction() override{
         if(!currentFunc->replaceActions.empty() || !currentFunc->removeActions.empty() || !currentFunc->insertActions.empty()){
             files.find(currentFile)->second.functions.push_back(*currentFunc);

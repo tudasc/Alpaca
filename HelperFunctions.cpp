@@ -78,7 +78,7 @@ namespace helper {
         return code;
     }
 
-    std::vector<std::string> convertPairIntoFlatVector(std::vector<std::pair<std::string, std::pair<std::string, std::string>>> vec){
+    std::vector<std::string> convertPairIntoFlatVector(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& vec){
         std::vector<std::string> output;
         for (const auto &item: vec){
             output.push_back(item.first);
