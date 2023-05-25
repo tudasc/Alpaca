@@ -98,7 +98,7 @@ namespace helper {
         return output.substr(0, output.length()-2) + ")";
     }
 
-    std::string retrieveFunctionHeader(const analyse::FunctionInstance& func){
+    std::string retrieveFunctionHeader(const analysis::FunctionInstance& func){
         return func.returnType + " " + func.qualifiedName + getAllParamsInRegularForm(func.params);
     }
 }

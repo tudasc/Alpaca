@@ -7,7 +7,7 @@
 
 
 using json = nlohmann::json;
-using namespace analyse;
+using namespace analysis;
 namespace customJSON {
 
     struct JSONFile {

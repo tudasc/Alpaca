@@ -40,6 +40,6 @@ namespace matcher{
         }
     };
 
-    double compareFunctionBodies(const analyse::FunctionInstance& oldFunc, const analyse::FunctionInstance& newFunc);
+    double compareFunctionBodies(const analysis::FunctionInstance& oldFunc, const analysis::FunctionInstance& newFunc);
     std::vector<Operation> getOptimalParamConversion(std::vector<std::pair<std::string, std::pair<std::string, std::string>>> oldParamStructure, std::vector<std::pair<std::string, std::pair<std::string, std::string>>> newParamStructure);
 }

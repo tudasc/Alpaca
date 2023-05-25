@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include "headers/Header1.h"
 #include "headers/Header2.h"
+
+int someValue = 200;
+
 void differentNumberParams(){
     int i=0;
     i=i+10;
@@ -73,6 +76,7 @@ double switchHeaderFile(int a){
 
 namespace nspace
 {
+    const inline extern unsigned int namespaceVariable = 200;
     void moveIntoClass(int i, bool x) {
         int b = i + b;
         int v = b + i;
@@ -82,6 +86,10 @@ namespace nspace
     }
     int movingNamespace::moveNamespace() {return 0;}
 }
+
+class otherClass{
+    const int otherClass=20;
+};
 
 int main() {
     differentNumberParams();

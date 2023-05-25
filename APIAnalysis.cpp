@@ -10,6 +10,11 @@
 
 #include "header/HelperFunctions.h"
 #include "header/Analyser.h"
+#include "Analyser.cpp"
+#include "header/VariableAnalyser.h"
+#include "VariableAnalyser.cpp"
+#include "ConsoleOutputHandler.cpp"
+#include "JSONOutputHandler.cpp"
 #include "filesystem"
 
 using namespace llvm;
@@ -17,7 +22,7 @@ using namespace clang;
 using namespace clang::tooling;
 using namespace clang;
 using namespace helper;
-using namespace analyse;
+using namespace analysis;
 
 template<typename T, class... Args>
 std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendActionFactory(Args... args){
@@ -43,10 +48,12 @@ std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendAc
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
     std::vector<FunctionInstance>* program;
     std::string dir;
+    std::vector<variableanalysis::VariableInstance>* variables;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables) : Context(Context){
         this->program = program;
         this->dir = directory;
+        this->variables = variables;
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
@@ -59,7 +66,18 @@ public:
 
         functionInstance.name = functionDecl->getNameAsString();
         functionInstance.returnType = functionDecl->getDeclaredReturnType().getAsString();
-        // TODO: handle const
+        // for const handling the function is cast to a CXX method (because C does not have const?)
+        if (auto *methodDecl = dyn_cast<CXXMethodDecl>(functionDecl)) {
+            // Access CXXMethodDecl properties
+            if (methodDecl->isConst()) {
+                functionInstance.isConst = true;
+            }else{
+                functionInstance.isConst = false;
+            }
+        }else{
+            functionInstance.isConst = false;
+        }
+
         // check if extern
         if(functionDecl->getStorageClass() == clang::StorageClass::SC_Extern){
             functionInstance.storageClass = "extern";
@@ -141,6 +159,166 @@ public:
         return true;
     };
 
+    bool VisitVarDecl(clang::VarDecl* varDecl){
+        // global variables of the files (i.e. not class / struct members)
+        if(!Context->getSourceManager().isInMainFile(varDecl->getLocation()) || !varDecl->hasGlobalStorage()){
+            return true;
+        }
+        variableanalysis::VariableInstance variableInstance;
+        variableInstance.isClassMember = false;
+
+        variableInstance.name = varDecl->getNameAsString();
+        variableInstance.qualifiedName = varDecl->getQualifiedNameAsString();
+        variableInstance.type = varDecl->getType().getAsString();
+        if(varDecl->hasInit()){
+            variableInstance.defaultValue = varDecl->getInitializingDeclaration()->getEvaluatedValue()->getAsString(*Context, varDecl->getInitializingDeclaration()->getType());
+        }
+        // gets the File Name
+        FullSourceLoc FullLocation = Context->getFullLoc(varDecl->getBeginLoc());
+        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(varDecl->getBeginLoc()).str()), dir);
+        variableInstance.filename = filename;
+
+        // gets a vector of all the classes / namespaces a variable is part of e.g. simple::example::function() -> [simple, example]
+        std::string fullName = varDecl->getQualifiedNameAsString();
+        std::string delimiter = "::";
+
+        int pos = 0;
+        std::string singleNamespace;
+        while ((pos = fullName.find(delimiter)) != std::string::npos) {
+            singleNamespace = fullName.substr(0, pos);
+            variableInstance.location.push_back(singleNamespace);
+            fullName.erase(0, pos + delimiter.length());
+        }
+
+        // check if extern
+        if(varDecl->getStorageClass() == clang::StorageClass::SC_Extern){
+            variableInstance.storageClass = "extern";
+        }
+        // check if static
+        else if(varDecl->getStorageClass() == clang::StorageClass::SC_Static){
+            variableInstance.storageClass = "static";
+        }
+        else if(varDecl->getStorageClass() == clang::StorageClass::SC_PrivateExtern){
+            variableInstance.storageClass = "private extern";
+        }
+        else if(varDecl->getStorageClass() == clang::StorageClass::SC_Register){
+            variableInstance.storageClass = "register";
+        }
+
+        if(varDecl->isInline()){
+            variableInstance.isInline = true;
+        }
+
+        QualType type = varDecl->getType();
+        if (type.isConstQualified()) {
+            variableInstance.isConst = true;
+        }else{
+            variableInstance.isConst = false;
+        }
+
+        if(type.hasQualifiers()) {
+            variableInstance.qualifiers = type.getQualifiers().getAsString();
+        }
+
+        // TODO: not a nice implementation, but it works for now
+        if(variableInstance.qualifiers.find("explicit") != std::string::npos){
+            variableInstance.isExplicit = true;
+        }else{
+            variableInstance.isExplicit = false;
+        }
+
+        if(variableInstance.qualifiers.find("volatile") != std::string::npos){
+            variableInstance.isVolatile = true;
+        }else{
+            variableInstance.isVolatile = false;
+        }
+
+        if(variableInstance.qualifiers.find("mutable") != std::string::npos){
+            variableInstance.isMutable = true;
+        }else{
+            variableInstance.isMutable = false;
+        }
+
+        return true;
+    }
+
+    bool VisitFieldDecl(clang::FieldDecl* decl){
+        // global variables of the files (i.e. not class / struct members)
+        if(!Context->getSourceManager().isInMainFile(decl->getLocation())){
+            return true;
+        }
+        variableanalysis::VariableInstance variableInstance;
+        variableInstance.isClassMember = false;
+
+        variableInstance.name = decl->getNameAsString();
+        variableInstance.qualifiedName = decl->getQualifiedNameAsString();
+        variableInstance.type = decl->getType().getAsString();
+
+        if(decl->hasInClassInitializer()){
+            auto expr = decl->getInClassInitializer();
+            APValue apValue;
+            if (expr->isCXX11ConstantExpr(*Context, &apValue)) {
+                variableInstance.defaultValue = apValue.getAsString(*Context, decl->getType());
+            } else {
+                variableInstance.defaultValue = "";
+            }
+            variableInstance.defaultValue = "";
+        }
+        // gets the File Name
+        FullSourceLoc FullLocation = Context->getFullLoc(decl->getBeginLoc());
+        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(decl->getBeginLoc()).str()), dir);
+        variableInstance.filename = filename;
+
+        // gets a vector of all the classes / namespaces a variable is part of e.g. simple::example::function() -> [simple, example]
+        std::string fullName = decl->getQualifiedNameAsString();
+        std::string delimiter = "::";
+
+        int pos = 0;
+        std::string singleNamespace;
+        while ((pos = fullName.find(delimiter)) != std::string::npos) {
+            singleNamespace = fullName.substr(0, pos);
+            variableInstance.location.push_back(singleNamespace);
+            fullName.erase(0, pos + delimiter.length());
+        }
+
+        QualType type = decl->getType();
+        if (type.isConstQualified()) {
+            variableInstance.isConst = true;
+        }else{
+            variableInstance.isConst = false;
+        }
+
+        if(type.hasQualifiers()) {
+            variableInstance.qualifiers = type.getQualifiers().getAsString();
+        }
+
+        // TODO: not a nice implementation, but it works for now
+        if(variableInstance.qualifiers.find("explicit") != std::string::npos){
+            variableInstance.isExplicit = true;
+        }else{
+            variableInstance.isExplicit = false;
+        }
+
+        if(variableInstance.qualifiers.find("volatile") != std::string::npos){
+            variableInstance.isVolatile = true;
+        }else{
+            variableInstance.isVolatile = false;
+        }
+
+        if(variableInstance.qualifiers.find("mutable") != std::string::npos){
+            variableInstance.isMutable = true;
+        }else{
+            variableInstance.isMutable = false;
+        }
+
+        // für private / public
+        //clang::AccessSpecifier::
+        //varDecl->getAccess()
+
+        //outs()<<decl->getQualifiedNameAsString()<<"\n";
+        return true;
+    }
+
 private:
     clang::ASTContext *Context;
 };
@@ -148,7 +326,7 @@ private:
 
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir) : apiAnalysisVisitor(Context, program, dir){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var) : apiAnalysisVisitor(Context, program, dir, var){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -162,14 +340,16 @@ private:
 class APIAnalysisAction : public clang::ASTFrontendAction {
     std::vector<FunctionInstance>* p;
     std::string directory;
+    std::vector<variableanalysis::VariableInstance>* var;
 public:
-    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir){
+    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var){
         this->p=program;
         this->directory = dir;
+        this->var = var;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
-        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory);
+        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var);
     }
 
 private:
@@ -259,9 +439,15 @@ int main(int argc, const char **argv) {
 
     bool jsonOutput = result["json"].as<bool>();
 
+    // lists of functions
     std::vector<FunctionInstance> oldProgram;
     std::vector<FunctionInstance> newProgram;
 
+    // lists of variables
+    std::vector<variableanalysis::VariableInstance> oldVariables;
+    std::vector<variableanalysis::VariableInstance> newVariables;
+
+    // compilation Databases
     std::unique_ptr<CompilationDatabase> oldCD;
     std::unique_ptr<CompilationDatabase> newCD;
 
@@ -312,7 +498,7 @@ int main(int argc, const char **argv) {
         oldTool.appendArgumentsAdjuster(adjuster);
     }
 
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).get());
+    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables).get());
 
     ClangTool newTool(*newCD,
                    newFiles);
@@ -328,15 +514,27 @@ int main(int argc, const char **argv) {
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
         newTool.appendArgumentsAdjuster(adjuster);
     }
-    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).get());
+    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables).get());
 
     oldProgram = assignDeclarations(oldProgram);
     newProgram = assignDeclarations(newProgram);
 
-    // Analysing
-    Analyser analyser = Analyser(oldProgram, newProgram, jsonOutput);
+    OutputHandler* outputHandler;
+    if(jsonOutput){
+        outputHandler = new JSONOutputHandler();
+    }else{
+        outputHandler = new ConsoleOutputHandler();
+    }
 
+    // Analysing Functions
+    Analyser analyser = Analyser(oldProgram, newProgram, outputHandler);
     analyser.compareVersionsWithDoc(docEnabled, outputPrivateFunctions);
+
+    // Analysing Variables
+    variableanalysis::VariableAnalyser variableAnalyser = variableanalysis::VariableAnalyser(oldVariables, newVariables, outputHandler);
+    variableAnalyser.compareVariables();
+
+    outputHandler->printOut();
 
     return 0;
 }
