@@ -33,8 +33,7 @@ namespace variableanalysis {
                     compareMainHeader(oldVar, newVar);
                     compareQualifiers(oldVar, newVar);
                 }else{
-                    // DELETED
-
+                    outputHandler->outputVariableDeleted(oldVar);
                 }
                 outputHandler->endOfCurrentVariable();
             }

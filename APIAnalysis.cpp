@@ -239,6 +239,7 @@ public:
             variableInstance.isMutable = false;
         }
 
+        variables->push_back(variableInstance);
         return true;
     }
 
@@ -311,11 +312,18 @@ public:
             variableInstance.isMutable = false;
         }
 
-        // für private / public
-        //clang::AccessSpecifier::
-        //varDecl->getAccess()
+        if(decl->getAccess() == clang::AccessSpecifier::AS_none){
+            variableInstance.accessSpecifier = "none";
+        }else if(decl->getAccess() == clang::AccessSpecifier::AS_private){
+            variableInstance.accessSpecifier = "private";
+        }else if(decl->getAccess() == clang::AccessSpecifier::AS_protected) {
+            variableInstance.accessSpecifier = "protected";
+        }else if(decl->getAccess() == clang::AccessSpecifier::AS_public){
+            variableInstance.accessSpecifier = "public";
+        }
 
-        //outs()<<decl->getQualifiedNameAsString()<<"\n";
+        variables->push_back(variableInstance);
+
         return true;
     }
 

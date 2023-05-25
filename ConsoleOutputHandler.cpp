@@ -119,48 +119,76 @@ public:
 
     // Variables
 
-    void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
+    void outputVariableDeleted(const variableanalysis::VariableInstance& var) override{
+        output += "The variable has been deleted\n";
+    }
 
+    void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
+        output += "The variable file changed from " + oldVar.filename + " to " + newVar.filename + "\n";
     }
 
     void outputVariableTypeChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        output += "The variable type changed from " + oldVar.type + " to " + newVar.type + "\n";
     }
 
     void outputVariableDefaultValueChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        output += "The variable default value changed from " + oldVar.defaultValue + " to " + newVar.defaultValue + "\n";
     }
 
     void outputVariableStorageClassChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        output += "The variable storage class changed from " + oldVar.storageClass + " to " + newVar.storageClass + "\n";
     }
 
     void outputVariableInlineChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        if(oldVar.isInline){
+            output += "The variable is not declared inline anymore\n";
+        }else{
+            output += "The variable is now declared inline\n";
+        }
     }
 
     void outputVariableAccessSpecifierChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        output += "The variable access specifier changed from " + oldVar.accessSpecifier + " to " + newVar.accessSpecifier + "\n";
     }
 
     void outputVariableConstChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        if(oldVar.isConst){
+            output += "The variable is not declared const anymore\n";
+        }else{
+            output += "The variable is now declared const\n";
+        }
     }
 
     void outputVariableExplicitChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        if(oldVar.isExplicit){
+            output += "The variable is not declared explicit anymore\n";
+        }else{
+            output += "The variable is now declared explicit\n";
+        }
     }
 
     void outputVariableVolatileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        if(oldVar.isVolatile){
+            output += "The variable is not declared volatile anymore\n";
+        }else{
+            output += "The variable is now declared volatile\n";
+        }
     }
 
     void outputVariableMutableChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        if(oldVar.isMutable){
+            output += "The variable is not declared mutable anymore\n";
+        }else{
+            output += "The variable is now declared mutable\n";
+        }
     }
 
     void outputVariableClassMember(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
+        if(oldVar.isClassMember){
+            output += "The variable is not part of a class anymore, its original location was:" + helper::getAllNamespacesAsString(oldVar.location) + "\n";
+        }else{
+            output += "The variable is now part of a class, its new location is:" + helper::getAllNamespacesAsString(newVar.location) + "\n";
+        }
     }
 
     bool endOfCurrentVariable() override {
