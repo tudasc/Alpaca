@@ -3,3 +3,5 @@
 bool switcher::switchFileButNotClass(int x, int z, int j) const {
     return true;
 }
+
+int switcher::declarationFileChange = 200;

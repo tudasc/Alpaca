@@ -22,5 +22,7 @@ namespace variableanalysis{
         bool isExplicit;
         bool isVolatile;
         bool isMutable;
+        bool isDefinition;
+        std::vector<VariableInstance> definitions;
     };
 }

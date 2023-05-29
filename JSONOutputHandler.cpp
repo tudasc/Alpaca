@@ -174,7 +174,19 @@ public:
 
     }
 
+    void outputVariableDefinitionDeleted(const variableanalysis::VariableInstance &var) override{
+
+    }
+
+    void outputVariableDefinitionAdded(const variableanalysis::VariableInstance &var) override{
+
+    }
+
     void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
+
+    }
+
+    void outputVariableLocationChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
 
     }
 

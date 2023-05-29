@@ -1,6 +1,8 @@
 #include "headers/Header1.h"
 #include "headers/Header2.h"
 
+int someValue = 500;
+
 void differentNumberParams(int check);
 
 void differentNumberParams(int check){
@@ -40,6 +42,8 @@ int overloaded(int w, bool z, int y, bool i){
     int b = w + z + y + i;
     return b;
 }
+
+int test::newDefinition = 20;
 
 namespace nspace
 {

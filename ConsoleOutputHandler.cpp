@@ -131,8 +131,20 @@ public:
         output += "The variable has been deleted\n";
     }
 
+    void outputVariableDefinitionDeleted(const variableanalysis::VariableInstance &var) override{
+        output += "The variable definition in file " + var.filename + " has been deleted\n";
+    }
+
+    void outputVariableDefinitionAdded(const variableanalysis::VariableInstance &var) override{
+        output += "The variable definition in file " + var.filename + " has been added\n";
+    }
+
     void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
         output += "The variable file changed from " + oldVar.filename + " to " + newVar.filename + "\n";
+    }
+
+    void outputVariableLocationChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
+        output += "The variable location has changed from " + helper::getAllNamespacesAsString(oldVar.location) + " to " + helper::getAllNamespacesAsString(newVar.location) + "\n";
     }
 
     void outputVariableTypeChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
@@ -140,7 +152,7 @@ public:
     }
 
     void outputVariableDefaultValueChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-        output += "The variable default value changed from " + oldVar.defaultValue + " to " + newVar.defaultValue + "\n";
+        output += "The variable default value in the definition in file " + newVar.filename + "changed from " + oldVar.defaultValue + " to " + newVar.defaultValue + "\n";
     }
 
     void outputVariableStorageClassChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {

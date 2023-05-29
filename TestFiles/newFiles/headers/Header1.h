@@ -16,17 +16,28 @@ int overloaded(int w, bool z, int y, bool i);
 
 namespace nspace
 {
+
+    int extern switchingFromStatic;
+    int static switchingToStatic;
+
     class test{
         void moveIntoClass(int i);
     };
 }
 
 class switcher{
+    int newClass;
+    static int declarationFileChange;
 public:
     bool switchFileButNotClass (int x, int z, int j) const;
 };
 
 class test {
+    bool newType;
+    const int newConst = 20;
+public:
+    int newScope;
+    int static newDefinition;
 private:
     void somethingPrivate();
     void somethingPublic();
@@ -40,3 +51,7 @@ namespace newNspace{
         int moveNamespace() const;
     };
 }
+
+struct testStruct{
+    int deleted = 10;
+};

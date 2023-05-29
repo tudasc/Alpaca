@@ -164,15 +164,24 @@ public:
         if(!Context->getSourceManager().isInMainFile(varDecl->getLocation()) || !varDecl->hasGlobalStorage()){
             return true;
         }
+
         variableanalysis::VariableInstance variableInstance;
+
+        if(varDecl->isThisDeclarationADefinition()){
+            variableInstance.isDefinition = true;
+            if(varDecl->getEvaluatedValue()){
+                variableInstance.defaultValue = varDecl->getEvaluatedValue()->getAsString(*Context, varDecl->getType());
+            }
+        }else{
+            variableInstance.isDefinition = false;
+        }
+
         variableInstance.isClassMember = false;
 
         variableInstance.name = varDecl->getNameAsString();
         variableInstance.qualifiedName = varDecl->getQualifiedNameAsString();
         variableInstance.type = varDecl->getType().getAsString();
-        if(varDecl->hasInit()){
-            variableInstance.defaultValue = varDecl->getInitializingDeclaration()->getEvaluatedValue()->getAsString(*Context, varDecl->getInitializingDeclaration()->getType());
-        }
+
         // gets the File Name
         FullSourceLoc FullLocation = Context->getFullLoc(varDecl->getBeginLoc());
         auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(varDecl->getBeginLoc()).str()), dir);
@@ -207,6 +216,8 @@ public:
 
         if(varDecl->isInline()){
             variableInstance.isInline = true;
+        }else{
+            variableInstance.isInline = false;
         }
 
         QualType type = varDecl->getType();
@@ -240,16 +251,20 @@ public:
         }
 
         variables->push_back(variableInstance);
+
         return true;
     }
 
     bool VisitFieldDecl(clang::FieldDecl* decl){
-        // global variables of the files (i.e. not class / struct members)
+        // class / struct members
         if(!Context->getSourceManager().isInMainFile(decl->getLocation())){
             return true;
         }
+
         variableanalysis::VariableInstance variableInstance;
         variableInstance.isClassMember = false;
+        variableInstance.isInline = false;
+        variableInstance.isDefinition = false;
 
         variableInstance.name = decl->getNameAsString();
         variableInstance.qualifiedName = decl->getQualifiedNameAsString();
@@ -401,6 +416,39 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
     return output;
 }
 
+std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<variableanalysis::VariableInstance>& variables){
+    std::vector<variableanalysis::VariableInstance> output;
+    std::vector<variableanalysis::VariableInstance> usedDefinitions;
+    for (auto &item: variables){
+        if(item.isDefinition){
+            continue;
+        }
+        // find all instances of this particular qualified name
+        for (auto &otherItem : variables)
+        {
+            if(otherItem.qualifiedName != item.qualifiedName || item.filename == otherItem.filename){
+                continue;
+            }
+            item.definitions.push_back(otherItem);
+            usedDefinitions.push_back(otherItem);
+        }
+    }
+
+    // delete all the declarations from the list
+    for (int i=0;i<variables.size();i++)
+    {
+        // adds definitions to the output
+        if (!(variables.at(i).isDefinition && std::find_if(usedDefinitions.begin(), usedDefinitions.end(),[variables, i](const variableanalysis::VariableInstance& var){return variables.at(i).qualifiedName == var.qualifiedName;})!=usedDefinitions.end())) {
+            if(variables.at(i).isDefinition){
+                variables.at(i).definitions.push_back(variables.at(i));
+            }
+            output.push_back(variables.at(i));
+        }
+    }
+
+    return output;
+}
+
 int main(int argc, const char **argv) {
     cxxopts::Options options("APIAnalysis", "Compares two versions of a C++ API and prints out the differences");
     options.add_options()
@@ -526,6 +574,9 @@ int main(int argc, const char **argv) {
 
     oldProgram = assignDeclarations(oldProgram);
     newProgram = assignDeclarations(newProgram);
+
+    oldVariables = assignDeclarations(oldVariables);
+    newVariables = assignDeclarations(newVariables);
 
     OutputHandler* outputHandler;
     if(jsonOutput){
