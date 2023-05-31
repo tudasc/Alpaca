@@ -4,6 +4,8 @@
 
 int someValue = 200;
 
+bool definitionFileChange = true;
+
 void differentNumberParams(){
     int i=0;
     i=i+10;
@@ -74,7 +76,7 @@ double switchHeaderFile(int a){
     return 0.0;
 }
 
-int switcher::declarationFileChange = 200;
+int switcher::definitionFileChange = 200;
 
 namespace nspace
 {

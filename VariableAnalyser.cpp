@@ -9,12 +9,25 @@ namespace variableanalysis {
         std::vector<VariableInstance> oldVariables;
         std::vector<VariableInstance> newVariables;
         OutputHandler* outputHandler;
-    int findVariable(const std::vector<VariableInstance>& set, const std::string& qualifiedName){
+    int findVariable(const std::vector<VariableInstance>& set, const VariableInstance& variableInstance){
+        // prioritylist (name has to be the same): qualifiedName > filename
+        std::map<int, VariableInstance> possibleMatches;
         for(int i=0;i<set.size();i++){
-            if(set.at(i).qualifiedName == qualifiedName){
+            if(set.at(i).qualifiedName == variableInstance.qualifiedName){
                 return i;
             }
+            if(set.at(i).name == variableInstance.name){
+                possibleMatches.insert(std::make_pair(i, set.at(i)));
+            }
         }
+        for(const auto& possibleMatch: possibleMatches){
+            // return the first match with the same filename
+            if(possibleMatch.second.filename == variableInstance.filename){
+                return possibleMatch.first;
+            }
+        }
+
+        // if there isn't even a match with the same filename, return that no match was found
         return -1;
     }
     public:
@@ -24,10 +37,9 @@ namespace variableanalysis {
             this->outputHandler = outputHandler;
         }
         void compareVariables(){
-            // TODO: moving variables okay, for now use qualifiedName for finding correct variables -> potential for a lot of logic (maybe using the modified levenshtein distance?)
             for (const auto &oldVar: oldVariables){
                 outputHandler->initialiseVariableInstance(oldVar);
-                auto indexInNew = findVariable(newVariables, oldVar.qualifiedName);
+                auto indexInNew = findVariable(newVariables, oldVar);
                 if(indexInNew != -1){
                     VariableInstance newVar = newVariables.at(indexInNew);
                     compareMainHeader(oldVar, newVar);
