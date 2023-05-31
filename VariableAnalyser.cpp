@@ -108,7 +108,6 @@ namespace variableanalysis {
         }
 
         void compareDefinitions(const VariableInstance& oldVar, const VariableInstance& newVar){
-            // TODO: Should the found definitions be compared as well?
             for (const auto &oldDef: oldVar.definitions){
                 bool found = false;
                 for (const auto &newDef: newVar.definitions){

@@ -100,7 +100,7 @@ public:
 
     void outputNewFilename(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance &oldFunc) override{
         /* remove function in file 1
-        RemoveAction removeAction = RemoveAction("function definition", helper::retrieveFunctionHeader(oldFunc));
+        RemoveAction removeAction = RemoveAction("function definition", oldFunc.fullHeader);
         currentFunc->removeActions.push_back(removeAction);
         // insert function in file 2? */
         // TODO: removeAction and then Insertion or is this a replacementAction?
@@ -112,7 +112,7 @@ public:
     }
 
     void outputDeletedDeclPositions(const analysis::FunctionInstance &newFunc, std::vector<std::string> deletedDecl, const analysis::FunctionInstance& oldFunc) override {
-        RemoveAction removeAction = RemoveAction("function declaration", helper::retrieveFunctionHeader(oldFunc));
+        RemoveAction removeAction = RemoveAction("function declaration", oldFunc.fullHeader);
         for (const auto &item: deletedDecl){
             if(files.count(item) == 0){
                 JSONFile newFile = JSONFile(item);
@@ -130,11 +130,11 @@ public:
 
     void outputDeletedFunction(const analysis::FunctionInstance &deletedFunc, bool overloaded) override {
         if(deletedFunc.isDeclaration){
-            RemoveAction removeAction = RemoveAction("function declaration", helper::retrieveFunctionHeader(deletedFunc));
+            RemoveAction removeAction = RemoveAction("function declaration", deletedFunc.fullHeader);
             currentFunc->removeActions.push_back(removeAction);
         }else {
             RemoveAction removeAction = RemoveAction("function definition",
-                                                     helper::retrieveFunctionHeader(deletedFunc));
+                                                     deletedFunc.fullHeader);
             currentFunc->removeActions.push_back(removeAction);
         }
     }
@@ -157,7 +157,7 @@ public:
     }
 
     void outputFunctionConstChange(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance &oldFunc) override {
-
+        // TODO: is this a replacement?
     }
 
     bool endOfCurrentFunction() override{

@@ -37,7 +37,7 @@ namespace matcher{
     double compareFunctionBodies(const analysis::FunctionInstance& oldFunc, const analysis::FunctionInstance& newFunc) {
         auto strippedNewCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body));
         auto strippedOldCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body));
-        // TODO: reevaluate
+        // TODO: reevaluate if it is a good idea to completly ignore empty functions in the comparison
         if(strippedNewCode == "{}" || strippedOldCode == "{}"){
             return 0;
         }
