@@ -2,7 +2,7 @@
 
 #include <vector>
 #include "../../include/json.hpp"
-#include "../Analyser.h"
+#include "../FunctionAnalyser.h"
 #include "InsertAction.h"
 #include "RemoveAction.h"
 #include "ReplaceAction.h"

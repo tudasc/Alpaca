@@ -1,7 +1,7 @@
 #include "header/OutputHandler.h"
 #include <string>
 #include <vector>
-#include "header/Analyser.h"
+#include "header/FunctionAnalyser.h"
 #include <llvm/Support/CommandLine.h>
 #include "header/HelperFunctions.h"
 
@@ -15,7 +15,7 @@ public:
 
     ConsoleOutputHandler()= default;
 
-    void initialiseFunctionInstance(const analysis::FunctionInstance &func) override {
+    void initialiseFunctionInstance(const functionanalysis::FunctionInstance &func) override {
         this->startingMessage = "-------------------------------------" + func.qualifiedName + " (Function) -------------------------------------\n";
         output = startingMessage;
     }
@@ -25,7 +25,7 @@ public:
         output = startingMessage;
     }
 
-    void outputNewParam(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) override{
+    void outputNewParam(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override{
         if(oldPosition != 0) {
             output +=
                     "There is a new parameter (" + newParam.first + " " + newParam.second.first + ") after the param " +
@@ -36,12 +36,12 @@ public:
         }
     }
 
-    void outputParamChange(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) override {
+    void outputParamChange(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
         output += "A parameter changed from " + oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first + " to "
         + newParam.first + " " + newParam.second.first+ " at position " + to_string(oldPosition) + ". Full params: " + helper::getAllParamsAsString(oldFunc.params) + " -> " + helper::getAllParamsAsString(newFunc.params) + "\n";
     }
 
-    void outputParamDefaultChange(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) override {
+    void outputParamDefaultChange(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
 
         string oldValue = (oldFunc.params.at(oldPosition).second.second.empty()) ? oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first : oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first + " = " + oldFunc.params.at(oldPosition).second.second;
         string newValue = (newParam.second.second.empty()) ? newParam.first + " " + newParam.second.first : newParam.first + " " + newParam.second.first + " = " + newParam.second.second;
@@ -49,36 +49,36 @@ public:
         output += "A default value of the param " + oldValue + " changed to " + newValue + ". Full params: " + helper::getAllParamsAsString(oldFunc.params) + " -> " + helper::getAllParamsAsString(newFunc.params) + "\n";
     }
 
-    void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams, const analysis::FunctionInstance& newFunc) override {
+    void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams, const functionanalysis::FunctionInstance& newFunc) override {
         output += "The parameter " + oldParams.at(oldPosition).first + " " + oldParams.at(oldPosition).second.first + " was deleted " + ". Full params: " + helper::getAllParamsAsString(oldParams) + " -> " + helper::getAllParamsAsString(newFunc.params) + "\n";;
      }
 
-     void outputNewReturn(const analysis::FunctionInstance &newFunc, std::string oldReturn) override {
+     void outputNewReturn(const functionanalysis::FunctionInstance &newFunc, std::string oldReturn) override {
         output += "The return type changed from " + oldReturn + " to " + newFunc.returnType + "\n";
     }
 
-    void outputNewScope(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) override {
+    void outputNewScope(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) override {
         output += "The scope changed from " + oldFunc.scope + " to " + newFunc.scope + "\n";
     }
 
-    void outputNewNamespaces(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance& oldFunc) override {
+    void outputNewNamespaces(const functionanalysis::FunctionInstance &newFunc, const functionanalysis::FunctionInstance& oldFunc) override {
         output += "The function moved namespaces from " + helper::getAllNamespacesAsString(oldFunc.location) + " to "
                 + helper::getAllNamespacesAsString(newFunc.location) + "\n";
     }
 
-    void outputNewFilename(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance& oldFunc) override{
+    void outputNewFilename(const functionanalysis::FunctionInstance &newFunc, const functionanalysis::FunctionInstance& oldFunc) override{
         output += "The function definition moved files from " + oldFunc.filename + " to " + newFunc.filename + "\n";
     }
 
-    void outputNewDeclPositions(const analysis::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
+    void outputNewDeclPositions(const functionanalysis::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
         output += "The function has new declarations in the files " + helper::getAllNamespacesAsString(addedDecl) + "\n";
     }
 
-    void outputDeletedDeclPositions(const analysis::FunctionInstance &newFunc, std::vector<std::string> deletedDecl, const analysis::FunctionInstance& oldFunc) override {
+    void outputDeletedDeclPositions(const functionanalysis::FunctionInstance &newFunc, std::vector<std::string> deletedDecl, const functionanalysis::FunctionInstance& oldFunc) override {
         output += "Declarations in the files " + helper::getAllNamespacesAsString(deletedDecl) + " were deleted\n";
     }
 
-    void outputDeletedFunction(const analysis::FunctionInstance &deletedFunc, bool overloaded) override {
+    void outputDeletedFunction(const functionanalysis::FunctionInstance &deletedFunc, bool overloaded) override {
         if(deletedFunc.isDeclaration){
             output += "A declaration in the file " + deletedFunc.filename + " was deleted";
             return;
@@ -90,25 +90,25 @@ public:
         }
     }
 
-    void outputOverloadedDisclaimer(const analysis::FunctionInstance &func, std::string percentage) override {
+    void outputOverloadedDisclaimer(const functionanalysis::FunctionInstance &func, std::string percentage) override {
         output += "DISCLAIMER: There is code similarity of " + percentage
                 + "% between the old overloaded function and the in the following analyzed instance of the overloaded function\n";
     }
 
-    void outputRenamedFunction(const analysis::FunctionInstance &newFunc, std::string oldName, std::string percentage) override {
+    void outputRenamedFunction(const functionanalysis::FunctionInstance &newFunc, std::string oldName, std::string percentage) override {
         output += "The function was renamed to \"" + newFunc.name +
                   "\" with a code similarity of " + percentage + "%\n";
     }
 
-    void outputStorageClassChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) override{
+    void outputStorageClassChange(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) override{
         output += "The functions storage class changed from " + oldFunc.storageClass + " to " + newFunc.storageClass + "\n";
     }
 
-    void outputFunctionSpecifierChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) override{
+    void outputFunctionSpecifierChange(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) override{
         output += "The function specifier changed from " + oldFunc.memberFunctionSpecifier + " to " + newFunc.memberFunctionSpecifier + "\n";
     }
 
-    void outputFunctionConstChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) override{
+    void outputFunctionConstChange(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) override{
         if(oldFunc.isConst){
             output += "The function is not declared const anymore\n";
         }else{

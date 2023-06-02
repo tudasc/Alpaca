@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "Analyser.h"
+#include "FunctionAnalyser.h"
 #include "VariableAnalyser.h"
 
 class OutputHandler {
@@ -10,39 +10,39 @@ public:
     OutputHandler() = default;
 
     // FUNCTIONS
-    virtual void initialiseFunctionInstance(const analysis::FunctionInstance& func) = 0;
+    virtual void initialiseFunctionInstance(const functionanalysis::FunctionInstance& func) = 0;
 
-    virtual void outputNewParam(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) = 0;
+    virtual void outputNewParam(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) {};
 
-    virtual void outputParamChange(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) = 0;
+    virtual void outputParamChange(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) {};
 
-    virtual void outputParamDefaultChange(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) = 0;
+    virtual void outputParamDefaultChange(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) {};
 
-    virtual void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams, const analysis::FunctionInstance& newFunc) = 0;
+    virtual void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams, const functionanalysis::FunctionInstance& newFunc) {};
 
-    virtual void outputNewReturn(const analysis::FunctionInstance& newFunc, std::string oldReturn) = 0;
+    virtual void outputNewReturn(const functionanalysis::FunctionInstance& newFunc, std::string oldReturn) {};
 
-    virtual void outputNewScope(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
+    virtual void outputNewScope(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) {};
 
-    virtual void outputNewNamespaces(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
+    virtual void outputNewNamespaces(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) {};
 
-    virtual void outputNewFilename(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
+    virtual void outputNewFilename(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) {};
 
-    virtual void outputNewDeclPositions(const analysis::FunctionInstance& newFunc, std::vector<std::string> addedDecl) = 0;
+    virtual void outputNewDeclPositions(const functionanalysis::FunctionInstance& newFunc, std::vector<std::string> addedDecl) {};
 
-    virtual void outputDeletedDeclPositions(const analysis::FunctionInstance& newFunc, std::vector<std::string> deletedDecl, const analysis::FunctionInstance& oldFunc) = 0;
+    virtual void outputDeletedDeclPositions(const functionanalysis::FunctionInstance& newFunc, std::vector<std::string> deletedDecl, const functionanalysis::FunctionInstance& oldFunc) {};
 
-    virtual void outputDeletedFunction(const analysis::FunctionInstance& deletedFunc, bool overloaded) = 0;
+    virtual void outputDeletedFunction(const functionanalysis::FunctionInstance& deletedFunc, bool overloaded) {};
 
-    virtual void outputRenamedFunction(const analysis::FunctionInstance& newFunc, std::string oldName, std::string percentage) = 0;
+    virtual void outputRenamedFunction(const functionanalysis::FunctionInstance& newFunc, std::string oldName, std::string percentage) {};
 
-    virtual void outputOverloadedDisclaimer(const analysis::FunctionInstance& func, std::string percentage) = 0;
+    virtual void outputOverloadedDisclaimer(const functionanalysis::FunctionInstance& func, std::string percentage) {};
 
-    virtual void outputStorageClassChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
+    virtual void outputStorageClassChange(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) {};
 
-    virtual void outputFunctionSpecifierChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
+    virtual void outputFunctionSpecifierChange(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) {};
 
-    virtual void outputFunctionConstChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
+    virtual void outputFunctionConstChange(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) {};
 
     virtual bool printOut() = 0;
 
@@ -51,35 +51,35 @@ public:
     // VARIABLES
     virtual void initialiseVariableInstance(const variableanalysis::VariableInstance& var) = 0;
 
-    virtual void outputVariableDeleted(const variableanalysis::VariableInstance& var) = 0;
+    virtual void outputVariableDeleted(const variableanalysis::VariableInstance& var) {};
 
-    virtual void outputVariableDefinitionDeleted(const variableanalysis::VariableInstance& var) = 0;
+    virtual void outputVariableDefinitionDeleted(const variableanalysis::VariableInstance& var) {};
 
-    virtual void outputVariableDefinitionAdded(const variableanalysis::VariableInstance& var) = 0;
+    virtual void outputVariableDefinitionAdded(const variableanalysis::VariableInstance& var) {};
 
-    virtual void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableLocationChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableLocationChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableTypeChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableTypeChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableDefaultValueChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableDefaultValueChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableStorageClassChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableStorageClassChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableInlineChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableInlineChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableAccessSpecifierChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableAccessSpecifierChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableConstChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableConstChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableExplicitChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableExplicitChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableVolatileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableVolatileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableMutableChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableMutableChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
-    virtual void outputVariableClassMember(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
+    virtual void outputVariableClassMember(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
     virtual bool endOfCurrentVariable() = 0;
 };
