@@ -27,7 +27,8 @@ namespace functionanalysis{
         bool isTemplateDecl;
         bool isTemplateSpec;
         std::vector<FunctionInstance> templateSpecializations;
-        std::vector<std::string> templateParams;
+        // [type, [name, default value]]
+        std::vector<std::pair<std::string, std::pair<std::string, std::string>>> templateParams;
         std::string getAsString(){
             std::string output;
             output += "\n-----------------" + name + "-----------------\n";

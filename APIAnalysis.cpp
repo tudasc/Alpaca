@@ -82,13 +82,39 @@ public:
             functionInstance.isTemplateSpec = true;
             functionInstance.isTemplateDecl = false;
             for (const auto &item: functionDecl->getTemplateSpecializationArgs()->asArray()) {
-                functionInstance.templateParams.push_back(item.getAsType().getAsString());
+                functionInstance.templateParams.emplace_back(item.getAsType().getAsString(), make_pair("", ""));
             }
         } else if (functionDecl->getDescribedFunctionTemplate()) {
             functionInstance.isTemplateSpec = false;
             functionInstance.isTemplateDecl = true;
+
             for (const auto &item: *functionDecl->getDescribedFunctionTemplate()->getTemplateParameters()) {
-                functionInstance.templateParams.push_back(item->getNameAsString());
+                if(const auto parm = dyn_cast<TemplateTypeParmDecl>(item)){
+                    if(parm->wasDeclaredWithTypename()){
+                        string defaultValue;
+                        if(parm->hasDefaultArgument()){
+                            defaultValue = parm->getDefaultArgument().getAsString();
+                        }
+                        functionInstance.templateParams.emplace_back("typename", make_pair(parm->getNameAsString(), defaultValue));
+                    }else{
+                        string defaultValue;
+                        if(parm->hasDefaultArgument()){
+                            defaultValue = parm->getDefaultArgument().getAsString();
+                        }
+                        functionInstance.templateParams.emplace_back("class", make_pair(parm->getNameAsString(), defaultValue));
+                    }
+                }else if(const auto parm = dyn_cast<NonTypeTemplateParmDecl>(item)){
+                    string defaultValue;
+                    if(parm->hasDefaultArgument()){
+                        auto start = parm->getDefaultArgument()->getBeginLoc(), end = parm->getDefaultArgument()->getEndLoc();
+                        LangOptions lang;
+                        SourceManager *sm = &(Context->getSourceManager());
+                        auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+                        defaultValue = std::string(sm->getCharacterData(start),
+                                                   sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                    }
+                    functionInstance.templateParams.emplace_back(parm->getType().getAsString(), make_pair(parm->getNameAsString(), defaultValue));
+                }
             }
         }else {
             functionInstance.isTemplateSpec = false;

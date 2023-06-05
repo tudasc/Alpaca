@@ -281,7 +281,7 @@ namespace functionanalysis{
         bool compareFunctionTemplates(const FunctionInstance &func, const FunctionInstance &newFunc, bool internalUse){
             bool output = false;
             // comparing the template parameters
-            vector<matcher::Operation> operations = matcher::getOptimalParamConversion(helper::convertFlatParamsIntoParamStructure(func.templateParams), helper::convertFlatParamsIntoParamStructure(newFunc.templateParams));
+            vector<matcher::Operation> operations = matcher::getOptimalParamConversion(func.templateParams, newFunc.templateParams);
 
             if(!operations.empty()){
                 output = true;
@@ -289,9 +289,15 @@ namespace functionanalysis{
             if(!operations.empty() && !internalUse){
                 for (const auto &item: operations) {
                     if (item.type == matcher::Operation::Types::REPLACEMENT) {
-                        outputHandler->outputTemplateParameterChanged(item.positionInOldParam, func, item.newParam.first, newFunc);
+                        if (item.oldParam.first != item.newParam.first) {
+                            outputHandler->outputTemplateParameterChanged(item.positionInOldParam, func, item.newParam, newFunc);
+                        }
+                        if (item.newParam.second.second != item.oldParam.second.second) {
+                            outputHandler->outputTemplateParameterDefaultChanged(item.positionInOldParam, func, item.newParam,
+                                                                    newFunc);
+                        }
                     } else if (item.type == matcher::Operation::Types::INSERTION) {
-                        outputHandler->outputTemplateParameterAdded(item.positionInOldParam, func, item.newParam.first, newFunc);
+                        outputHandler->outputTemplateParameterAdded(item.positionInOldParam, func, item.newParam, newFunc);
                     } else if (item.type == matcher::Operation::Types::DELETION) {
                         outputHandler->outputTemplateParameterDeleted(item.positionInOldParam, func, newFunc);
                     } else {
@@ -378,15 +384,10 @@ namespace functionanalysis{
                     if (item.type == matcher::Operation::Types::REPLACEMENT) {
                         if (item.oldParam.first != item.newParam.first) {
                             outputHandler->outputParamChange(item.positionInOldParam, func, item.newParam, newFunc);
-                        } else {
-                            // if the types are the same, the change is in the defaults
-                            if (item.newParam.second.second.empty()) {
-                                outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam, newFunc);
-                            } else {
-                                // both have a default, that itself changed OR there is a new default
-                                outputHandler->outputParamDefaultChange(item.positionInOldParam, func, item.newParam,
-                                                                        newFunc);
-                            }
+                        }
+                        if (item.newParam.second.second != item.oldParam.second.second) {
+                            outputHandler->outputParamDefaultChange(item.positionInOldParam, func, item.newParam,
+                                                                    newFunc);
                         }
                     } else if (item.type == matcher::Operation::Types::INSERTION) {
                         outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam, newFunc);

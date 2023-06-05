@@ -52,7 +52,7 @@ namespace helper {
     std::string getAllParamsAsString(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& params){
         std::string output = "[";
         for (const auto &item: params){
-            if(item.second.second != ""){
+            if(!item.second.second.empty()){
                 output += item.first + " " + item.second.first + " = " + item.second.second + ", ";
             }else{
                 output += item.first + " " + item.second.first + ", ";
@@ -62,7 +62,7 @@ namespace helper {
     }
 
     std::string getAllNamespacesAsString(const std::vector<std::string>& params){
-        std::string output = "";
+        std::string output;
         for (const auto &item: params){
             output += item + "::";
         }
@@ -116,7 +116,7 @@ namespace helper {
     std::string getAllParamsInRegularForm(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& params){
         std::string output = "(";
         for (const auto &item: params){
-            if(item.second.second != ""){
+            if(!item.second.second.empty()){
                 output += item.first + " " + item.second.first + " = " + item.second.second + ", ";
             }else{
                 output += item.first + " " + item.second.first + ", ";
@@ -138,10 +138,14 @@ namespace helper {
         return output;
     }
 
-    std::string getAllTemplateParamsAsString(const std::vector<std::string>& params){
+    std::string getAllTemplateParamsAsString(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& templateParams){
         std::string output = "<";
-        for (const auto &item: params){
-            output += item + ", ";
+        for (const auto &item: templateParams){
+            if(!item.second.second.empty()){
+                output += item.first + " " + item.second.first + " = " + item.second.second + ", ";
+            }else{
+                output += item.first + " " + item.second.first + ", ";
+            }
         }
         return output.substr(0, output.length()-2) + ">";
     }
@@ -158,4 +162,11 @@ namespace helper {
         return true;
     }
 
+    std::string getSingleTemplateParamAsString(const std::pair<std::string, std::pair<std::string, std::string>>& param){
+        if(!param.second.second.empty()){
+            return param.first + " " + param.second.first + " = " + param.second.second;
+        }else{
+            return param.first + " " + param.second.first;
+        }
+    }
 }
