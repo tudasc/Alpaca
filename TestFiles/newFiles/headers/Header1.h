@@ -1,5 +1,10 @@
 #include <stdbool.h>
 
+template <typename T, class B> T specAdded(T x, B y);
+template <typename T, typename C> T specDeleted (T x, C y);
+template <typename T, typename X> X templateParamAdded(T x, X y);
+template <typename T> T templateParamDeleted(T x);
+
 void differentNumberParams(int check);
 
 void newReturn(bool* one, int two);

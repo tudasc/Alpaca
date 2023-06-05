@@ -1,5 +1,11 @@
 #pragma once
 
+template <typename T, class B> T specAdded(T x, B y);
+template <typename T> T specAdded(T x, T y, T z);
+template <typename T, typename C> T specDeleted (T x, C y);
+template <typename T> T templateParamAdded(T x, T y);
+template <typename T, typename Z> T templateParamDeleted(T x, Z y);
+
 void differentNumberParams();
 
 int newReturn(bool* one, int two);

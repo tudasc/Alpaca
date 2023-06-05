@@ -128,4 +128,34 @@ namespace helper {
     std::string retrieveFunctionHeader(const functionanalysis::FunctionInstance& func){
         return func.returnType + " " + func.qualifiedName + getAllParamsInRegularForm(func.params);
     }
+
+    std::vector<std::pair<std::string, std::pair<std::string, std::string>>> convertFlatParamsIntoParamStructure(const std::vector<std::string>& params){
+        std::vector<std::pair<std::string, std::pair<std::string, std::string>>> output;
+        output.reserve(params.size());
+        for (const auto &item: params){
+            output.emplace_back(item, std::make_pair("", ""));
+        }
+        return output;
+    }
+
+    std::string getAllTemplateParamsAsString(const std::vector<std::string>& params){
+        std::string output = "<";
+        for (const auto &item: params){
+            output += item + ", ";
+        }
+        return output.substr(0, output.length()-2) + ">";
+    }
+
+    bool paramsAreEqual(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc){
+        if(oldFunc.params.size() != newFunc.params.size()){
+            return false;
+        }
+        for(unsigned int i = 0; i < oldFunc.params.size(); i++){
+            if(oldFunc.params.at(i).first != newFunc.params.at(i).first){
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

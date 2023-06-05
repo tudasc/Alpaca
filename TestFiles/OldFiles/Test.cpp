@@ -4,6 +4,30 @@
 
 int someValue = 200;
 
+template <typename T, class B> T specAdded(T x, B y)
+{
+    return (x > y) ? x : y;
+}
+
+// overloading possible
+template <typename T> T specAdded(T x, T y, T z){
+    return x;
+}
+
+template <typename T, typename C> T specDeleted (T x, C y){
+    return x;
+}
+
+template <> int specDeleted(int x, int y){
+    return 10;
+}
+
+template <typename T> T templateParamAdded(T x, T y){
+    return x + y + x;
+}
+
+
+
 bool definitionFileChange = true;
 
 void differentNumberParams(){

@@ -12,7 +12,7 @@ using namespace std;
 
 namespace functionanalysis{
 
-    class Analyser {
+    class FunctionAnalyser {
         std::vector<FunctionInstance> oldProgram;
         std::vector<FunctionInstance> newProgram;
         OutputHandler* outputHandler;
@@ -66,9 +66,9 @@ namespace functionanalysis{
         }
 
     public:
-        Analyser(const std::vector<FunctionInstance>& oldProgram,
-                 const std::vector<FunctionInstance>& newProgram,
-                 OutputHandler* outputHandler) {
+        FunctionAnalyser(const std::vector<FunctionInstance>& oldProgram,
+                         const std::vector<FunctionInstance>& newProgram,
+                         OutputHandler* outputHandler) {
             this->oldProgram = oldProgram;
             this->newProgram = newProgram;
             this->outputHandler = outputHandler;
@@ -220,7 +220,7 @@ namespace functionanalysis{
                         isFunctionOverloaded(oldProgram.at(i), newProgram.at(j))
                         && oldProgram.at(i).returnType == newProgram.at(j).returnType &&
                         !compareParams(oldProgram.at(i), newProgram.at(j), true)) {
-                        outputHandler->initialiseFunctionInstance(func);
+                        outputHandler->initialiseFunctionInstance(oldProgram.at(i));
                         // proceed normally
                         bool analysisResult = compareFunctionHeaderExceptParams(oldProgram.at(i), newProgram.at(j),
                                                                                 false);
@@ -278,8 +278,71 @@ namespace functionanalysis{
             return true;
         }
 
+        bool compareFunctionTemplates(const FunctionInstance &func, const FunctionInstance &newFunc, bool internalUse){
+            bool output = false;
+            // comparing the template parameters
+            vector<matcher::Operation> operations = matcher::getOptimalParamConversion(helper::convertFlatParamsIntoParamStructure(func.templateParams), helper::convertFlatParamsIntoParamStructure(newFunc.templateParams));
+
+            if(!operations.empty()){
+                output = true;
+            }
+            if(!operations.empty() && !internalUse){
+                for (const auto &item: operations) {
+                    if (item.type == matcher::Operation::Types::REPLACEMENT) {
+                        outputHandler->outputTemplateParameterChanged(item.positionInOldParam, func, item.newParam.first, newFunc);
+                    } else if (item.type == matcher::Operation::Types::INSERTION) {
+                        outputHandler->outputTemplateParameterAdded(item.positionInOldParam, func, item.newParam.first, newFunc);
+                    } else if (item.type == matcher::Operation::Types::DELETION) {
+                        outputHandler->outputTemplateParameterDeleted(item.positionInOldParam, func, newFunc);
+                    } else {
+                        throw std::invalid_argument(
+                                "An invalid argument was passed by the matcher::getOptimalParamConversion function");
+                    }
+                }
+            }
+            // comparing the template specifications on the basis of their params (i.e. if two specs have the same params, they are considered equal) and if a spec has no match it is considered deleted
+            for (const auto &item: func.templateSpecializations){
+                bool found = false;
+                for (const auto &newItem: newFunc.templateSpecializations){
+                    if(!compareParams(item, newItem, true)){
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found){
+                    outputHandler->outputDeletedSpecialization(item);
+                    output = true;
+                }
+            }
+
+            for (const auto &item: newFunc.templateSpecializations){
+                bool found = false;
+                for (const auto &oldItem: func.templateSpecializations){
+                    if(!compareParams(oldItem, item, true)){
+                        found = true;
+                        break;
+                    }
+                }
+                if(!found){
+                    outputHandler->outputNewSpecialization(item);
+                    output = true;
+                }
+            }
+
+
+            return output;
+        }
+
         bool compareFunctionHeaderExceptParams(const FunctionInstance &func, const FunctionInstance &newFunc, bool internalUse) {
             int output = 0;
+
+            if(func.isTemplateDecl && newFunc.isTemplateDecl){
+                output += compareFunctionTemplates(func, newFunc, internalUse);
+            }else if(func.isTemplateDecl && !newFunc.isTemplateDecl){
+                outputHandler->outputTemplateIsNowFunction(func, newFunc);
+            }else if(!func.isTemplateDecl && newFunc.isTemplateDecl){
+                outputHandler->outputFunctionIsNowTemplate(func, newFunc);
+            }
 
             // TODO: Evaluate which of these should be included in the Header Checks
             output += compareReturnType(func, newFunc, internalUse);

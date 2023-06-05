@@ -3,6 +3,24 @@
 
 int someValue = 500;
 
+template <typename T, class B> T specAdded(T x, B y)
+{
+    return (x > y) ? x : y;
+}
+
+// overloading possible
+template <typename T> T specAdded(T x, T y, T z){
+    return x;
+}
+
+template <> int specAdded(int x, int y){
+    return 20;
+}
+
+template <typename T, typename C> T specDeleted (T x, C y){
+    return x;
+}
+
 void differentNumberParams(int check);
 
 void differentNumberParams(int check){
@@ -72,6 +90,7 @@ namespace newNspace{
 }
 
 int main() {
+    auto smt = specAdded<int,int>(1, 3);
     differentNumberParams(5);
     bool test = false;
     bool* testPtr = &test;
