@@ -4,6 +4,7 @@
 #include <vector>
 #include "FunctionAnalyser.h"
 #include "VariableAnalyser.h"
+#include "ObjectAnalyser.h"
 
 class OutputHandler {
 public:
@@ -99,4 +100,21 @@ public:
     virtual void outputVariableClassMember(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) {};
 
     virtual bool endOfCurrentVariable() = 0;
+
+    // Objects
+    virtual void initialiseObjectInstance(const objectanalysis::ObjectInstance& obj) = 0;
+
+    virtual void outputObjectDeleted(const objectanalysis::ObjectInstance& obj) {};
+
+    virtual void outputObjectFilenameChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) {};
+
+    virtual void outputObjectLocationChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) {};
+
+    virtual void outputObjectFinalChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) {};
+
+    virtual void outputObjectAbstractChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) {};
+
+    virtual void outputObjectTypeChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) {};
+
+    virtual bool endOfCurrentObject() = 0;
 };
