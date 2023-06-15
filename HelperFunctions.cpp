@@ -14,6 +14,10 @@ namespace helper {
     std::vector<std::string> acceptedFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx",".cppm"};
 
     void listFiles(const std::string &path, std::vector<std::string>* listOfFiles, const std::vector<std::string>* excludedFiles){
+        if(!fs::is_directory(path)){
+            listOfFiles->push_back(fs::canonical(path));
+            return;
+        }
         fs::recursive_directory_iterator it(path);
 
         for(decltype(it) end; it != end; ++it){

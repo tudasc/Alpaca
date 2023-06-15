@@ -12,6 +12,7 @@ public:
     std::string output;
     std::string completeOutput;
     std::string startingMessage;
+    int foundChanges = 0;
 
     ConsoleOutputHandler()= default;
 
@@ -129,6 +130,7 @@ public:
         if(output != startingMessage){
             output += "\n";
             completeOutput += output;
+            foundChanges++;
             return true;
         }
         return false;
@@ -136,11 +138,11 @@ public:
 
     // Templates
     void outputTemplateIsNowFunction(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) override {
-        output += "The template is now a function";
+        output += "The template is now a function\n";
     }
 
     void outputFunctionIsNowTemplate(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) override {
-        output += "The function is now a template";
+        output += "The function is now a template\n";
     }
 
     void outputTemplateParameterAdded(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
@@ -256,6 +258,7 @@ public:
         if(output != startingMessage){
             output += "\n";
             completeOutput += output;
+            foundChanges++;
             return true;
         }
         return false;
@@ -298,6 +301,7 @@ public:
         if(output != startingMessage){
             output += "\n";
             completeOutput += output;
+            foundChanges++;
             return true;
         }
         return false;
@@ -306,6 +310,7 @@ public:
 
     bool printOut() override {
         llvm::outs()<<completeOutput;
+        llvm::outs()<<"Found "<<foundChanges<<" changes\n";
         return true;
     }
 
