@@ -26,6 +26,8 @@ using namespace clang;
 using namespace helper;
 using namespace functionanalysis;
 
+int clockingThing=0;
+
 template<typename T, class... Args>
 std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendActionFactory(Args... args){
 
@@ -46,86 +48,43 @@ std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendAc
     return std::unique_ptr<FrontendActionFactory>(new SimpleFrontendActionFactory(args...));
 }
 
+int findFunctionInstance(std::vector<FunctionInstance>* program, const string& qualifiedName, const string& filename){
+    for(int i = 0; i < program->size(); i++){
+        if(program->at(i).qualifiedName == qualifiedName && program->at(i).filename == filename){
+            return i;
+        }
+    }
+    return -1;
+}
+
+string getFunctionDeclFilename(FunctionDecl* functionDecl, clang::ASTContext *Context, const string& dir){
+    FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
+    auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
+    return filename;
+}
 
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
     std::vector<FunctionInstance>* program;
     std::string dir;
     std::vector<variableanalysis::VariableInstance>* variables;
     std::vector<objectanalysis::ObjectInstance>* objects;
+    std::vector<std::string> files;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables, std::vector<objectanalysis::ObjectInstance>* objects) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files) : Context(Context){
         this->program = program;
         this->dir = directory;
         this->variables = variables;
         this->objects = objects;
+        this->files = files;
     }
 
-    bool VisitRecordDecl(clang::RecordDecl *recordDecl){
-        if(!Context->getSourceManager().isInMainFile(recordDecl->getLocation())){
-            return true;
-        }
-        objectanalysis::ObjectInstance objectInstance;
+    FunctionInstance createFunctionInstance(FunctionDecl* functionDecl){
 
-        objectInstance.name = recordDecl->getNameAsString();
-        objectInstance.qualifiedName = recordDecl->getQualifiedNameAsString();
-
-        std::string fullName = recordDecl->getQualifiedNameAsString();
-        std::string delimiter = "::";
-
-        int pos = 0;
-        std::string singleNamespace;
-        while ((pos = fullName.find(delimiter)) != std::string::npos) {
-            singleNamespace = fullName.substr(0, pos);
-            objectInstance.location.push_back(singleNamespace);
-            fullName.erase(0, pos + delimiter.length());
-        }
-
-        // gets the File Name
-        FullSourceLoc FullLocation = Context->getFullLoc(recordDecl->getBeginLoc());
-        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(recordDecl->getBeginLoc()).str()), dir);
-        objectInstance.filename = filename;
-
-        switch (recordDecl->getTagKind()) {
-            case TTK_Struct:
-                objectInstance.objectType = objectanalysis::ObjectType::STRUCT;
-                break;
-            case TTK_Class:
-                objectInstance.objectType = objectanalysis::ObjectType::CLASS;
-                break;
-            case TTK_Union:
-                objectInstance.objectType = objectanalysis::ObjectType::ENUM_UNION;
-                break;
-            case TTK_Enum:
-                objectInstance.objectType = objectanalysis::ObjectType::ENUM;
-                break;
-            default:
-                objectInstance.objectType = objectanalysis::ObjectType::UNKNOWN;
-                break;
-        }
-
-        if(recordDecl->getTagKind() == TTK_Class) {
-            auto *cxxRecordDecl = dyn_cast<CXXRecordDecl>(recordDecl);
-            if(cxxRecordDecl && cxxRecordDecl->hasDefinition()) {
-                objectInstance.isAbstract = cxxRecordDecl->isAbstract();
-            }else{
-                objectInstance.isAbstract = false;
-            }
-            objectInstance.isFinal = cxxRecordDecl->isEffectivelyFinal();
-        }else{
-            objectInstance.isAbstract = false;
-            objectInstance.isFinal = false;
-        }
-
-        this->objects->push_back(objectInstance);
-
-        return true;
-    }
-
-
-    bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
-        // skip this function, if it's declared in the header files
-        if(!Context->getSourceManager().isInMainFile(functionDecl->getLocation())){
-            return true;
+        clockingThing += 1;
+        if(clockingThing % 10 == 0){
+            outs().flush();
+            outs() << clockingThing<< "\n";
+            outs() << functionDecl->getQualifiedNameAsString()<< "\n";
         }
 
         FunctionInstance functionInstance;
@@ -191,7 +150,7 @@ public:
         if(functionDecl->getStorageClass() == clang::StorageClass::SC_Extern){
             functionInstance.storageClass = "extern";
         }
-        // check if static
+            // check if static
         else if(functionDecl->getStorageClass() == clang::StorageClass::SC_Static){
             functionInstance.storageClass = "static";
         }
@@ -212,13 +171,12 @@ public:
             auto paramDecl = functionDecl->getParamDecl(i);
             std::string defaultParam;
             if(paramDecl->hasDefaultArg()){
-                //defaultParam = paramDecl->getDefaultArgRange().(Context->getSourceManager());
                 auto start = paramDecl->getDefaultArg()->getBeginLoc(), end = paramDecl->getDefaultArg()->getEndLoc();
                 LangOptions lang;
                 SourceManager *sm = &(Context->getSourceManager());
                 auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
                 defaultParam = std::string(sm->getCharacterData(start),
-                                                    sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                                           sm->getCharacterData(endToken) - sm->getCharacterData(start));
 
             }
             functionInstance.params.push_back(std::make_pair(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam)));
@@ -237,9 +195,7 @@ public:
         }
 
         // gets the File Name
-        FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
-        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
-        functionInstance.filename = filename;
+        functionInstance.filename = getFunctionDeclFilename(functionDecl, Context, dir);
 
         // save the qualified name of the function
         functionInstance.qualifiedName = functionDecl->getQualifiedNameAsString();
@@ -252,8 +208,9 @@ public:
                 LangOptions lang;
                 SourceManager *sm = &(Context->getSourceManager());
                 auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
-                functionInstance.body = std::string(sm->getCharacterData(start),
-                                                    sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                if(sm->getCharacterData(endToken) - sm->getCharacterData(start)) {
+                    //functionInstance.body = std::string(sm->getCharacterData(start),sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                }
             }
         } else {
             // marks the function as a Declaration and doesn't save the body
@@ -274,7 +231,102 @@ public:
 
         functionInstance.fullHeader = entireHeader;
 
-        program->push_back(functionInstance);
+        functionInstance.declarations.push_back(functionInstance);
+
+        return functionInstance;
+    }
+
+    bool VisitRecordDecl(clang::RecordDecl *recordDecl){
+        if(!Context->getSourceManager().isInMainFile(recordDecl->getLocation())){
+            return true;
+        }
+        objectanalysis::ObjectInstance objectInstance;
+
+        objectInstance.name = recordDecl->getNameAsString();
+        objectInstance.qualifiedName = recordDecl->getQualifiedNameAsString();
+
+        std::string fullName = recordDecl->getQualifiedNameAsString();
+        std::string delimiter = "::";
+
+        int pos = 0;
+        std::string singleNamespace;
+        while ((pos = fullName.find(delimiter)) != std::string::npos) {
+            singleNamespace = fullName.substr(0, pos);
+            objectInstance.location.push_back(singleNamespace);
+            fullName.erase(0, pos + delimiter.length());
+        }
+
+        // gets the File Name
+        FullSourceLoc FullLocation = Context->getFullLoc(recordDecl->getBeginLoc());
+        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(recordDecl->getBeginLoc()).str()), dir);
+        objectInstance.filename = filename;
+
+        switch (recordDecl->getTagKind()) {
+            case TTK_Struct:
+                objectInstance.objectType = objectanalysis::ObjectType::STRUCT;
+                break;
+            case TTK_Class:
+                objectInstance.objectType = objectanalysis::ObjectType::CLASS;
+                break;
+            case TTK_Union:
+                objectInstance.objectType = objectanalysis::ObjectType::ENUM_UNION;
+                break;
+            case TTK_Enum:
+                objectInstance.objectType = objectanalysis::ObjectType::ENUM;
+                break;
+            default:
+                objectInstance.objectType = objectanalysis::ObjectType::UNKNOWN;
+                break;
+        }
+
+        if(recordDecl->getTagKind() == TTK_Class) {
+            auto *cxxRecordDecl = dyn_cast<CXXRecordDecl>(recordDecl);
+            if(cxxRecordDecl && cxxRecordDecl->hasDefinition()) {
+                objectInstance.isAbstract = cxxRecordDecl->isAbstract();
+            }else{
+                objectInstance.isAbstract = false;
+            }
+            objectInstance.isFinal = cxxRecordDecl->isEffectivelyFinal();
+        }else{
+            objectInstance.isAbstract = false;
+            objectInstance.isFinal = false;
+        }
+
+        this->objects->push_back(objectInstance);
+
+        return true;
+    }
+
+    bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
+        FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
+        auto tack = FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str();
+        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
+        if(std::find(files.begin(), files.end(), filename) == files.end()){
+            return true;
+        }
+
+        if(!functionDecl->isThisDeclarationADefinition()){
+            if(functionDecl->isDefined()){
+                auto functionInstance = createFunctionInstance(functionDecl);
+                if(auto position = findFunctionInstance(program, functionDecl->getDefinition()->getQualifiedNameAsString(),
+                                        getFunctionDeclFilename(functionDecl, Context, dir)) != -1){
+                    program->at(position).declarations.push_back(functionInstance);
+                }else{
+                    auto definition = createFunctionInstance(functionDecl->getDefinition());
+                    definition.declarations.push_back(functionInstance);
+                    program->push_back(definition);
+                }
+            }else{
+                //TODO: currently no support for function declarations without definitions -> this would necessitate multiple additional iterations over the found functions, because clang doesnt seem to recognize definitions properly...
+                //program->push_back(functionInstance);
+            }
+        }else{
+            auto functionInstance = createFunctionInstance(functionDecl);
+            if(findFunctionInstance(program, functionDecl->getDefinition()->getQualifiedNameAsString(),
+                                    getFunctionDeclFilename(functionDecl, Context, dir)) == -1){
+                program->push_back(functionInstance);
+            }
+        }
         return true;
     };
 
@@ -392,7 +444,7 @@ public:
         if(decl->hasInClassInitializer()){
             auto expr = decl->getInClassInitializer();
             APValue apValue;
-            if (expr->isCXX11ConstantExpr(*Context, &apValue)) {
+            if (expr && expr->isCXX11ConstantExpr(*Context, &apValue)) {
                 variableInstance.defaultValue = apValue.getAsString(*Context, decl->getType());
             } else {
                 variableInstance.defaultValue = "";
@@ -468,7 +520,7 @@ private:
 
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects) : apiAnalysisVisitor(Context, program, dir, var, objects){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string>& files) : apiAnalysisVisitor(Context, program, dir, var, objects, files){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -484,17 +536,19 @@ class APIAnalysisAction : public clang::ASTFrontendAction {
     std::string directory;
     std::vector<variableanalysis::VariableInstance>* var;
     std::vector<objectanalysis::ObjectInstance>* obj;
+    std::vector<std::string> files;
 public:
-    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects){
+    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files){
         this->p=program;
         this->directory = dir;
         this->var = var;
         this->obj = objects;
+        this->files = files;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
         Compiler.getDiagnostics().setClient(new clang::IgnoringDiagConsumer(), true);
-        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj);
+        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj, files);
     }
 
 private:
@@ -521,7 +575,7 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
         }
         item.declarations.push_back(item);
     }
-
+    outs()<<functions.size()<<"\n";
     // delete all the declarations from the list
     for (int i=0;i<functions.size();i++)
     {
@@ -731,8 +785,19 @@ int main(int argc, const char **argv) {
         oldTool.appendArgumentsAdjuster(adjuster);
     }
 
+    std::vector<std::string> relativeListOfOldFiles;
+    std::vector<std::string> relativeListOfNewFiles;
 
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects).get());
+    relativeListOfOldFiles.reserve(oldFiles.size());
+    for (const auto &item: oldFiles){
+        relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
+    }
+    relativeListOfNewFiles.reserve(newFiles.size());
+    for (const auto &item: newFiles){
+        relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
+    }
+
+    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles).get());
     ClangTool newTool(*newCD,
                    newFiles);
 
@@ -747,10 +812,15 @@ int main(int argc, const char **argv) {
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
         newTool.appendArgumentsAdjuster(adjuster);
     }
-    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects).get());
 
-    oldProgram = assignDeclarations(oldProgram);
-    newProgram = assignDeclarations(newProgram);
+    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles).get());
+
+    outs()<<"All functions, objects and variables were processed\n";
+    outs()<<"In total "<<oldProgram.size()<<" functions, "<<oldObjects.size()<<" objects and "<<oldVariables.size()<<" variables were found in the old version of the project\n";
+    outs()<<"In total "<<newProgram.size()<<" functions, "<<newObjects.size()<<" objects and "<<newVariables.size()<<" variables were found in the new version of the project\n";
+
+    //oldProgram = assignDeclarations(oldProgram);
+    //newProgram = assignDeclarations(newProgram);
 
     oldProgram = assignSpecializations(oldProgram);
     newProgram = assignSpecializations(newProgram);
@@ -764,15 +834,15 @@ int main(int argc, const char **argv) {
     }else{
         outputHandler = new ConsoleOutputHandler();
     }
-
+    outs()<<"The objectanalysis started\n";
     // Analysing Objects
     objectanalysis::ObjectAnalyser objectAnalyser = objectanalysis::ObjectAnalyser(oldObjects, newObjects, outputHandler);
     objectAnalyser.compareObjects();
-
+    outs()<<"The functionanalysis started\n";
     // Analysing Functions
     FunctionAnalyser analyser = FunctionAnalyser(oldProgram, newProgram, outputHandler);
     analyser.compareVersionsWithDoc(docEnabled, outputPrivateFunctions);
-
+    outs()<<"The variableanalysis started\n";
     // Analysing Variables
     variableanalysis::VariableAnalyser variableAnalyser = variableanalysis::VariableAnalyser(oldVariables, newVariables, outputHandler);
     variableAnalyser.compareVariables();

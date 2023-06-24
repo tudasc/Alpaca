@@ -18,7 +18,7 @@ namespace objectanalysis{
             // prioritylist (name has to be the same): qualifiedName > filename > closest match on location
             std::map<int, ObjectInstance> possibleMatches;
             for(int i=0;i<set.size();i++){
-                if(set.at(i).qualifiedName == objectInstance.qualifiedName){
+                if(set.at(i).qualifiedName == objectInstance.qualifiedName && set.at(i).filename == objectInstance.filename){
                     return i;
                 }
                 if(set.at(i).name == objectInstance.name){
