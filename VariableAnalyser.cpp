@@ -12,35 +12,33 @@ namespace variableanalysis {
         OutputHandler* outputHandler;
     int findVariable(const std::vector<VariableInstance>& set, const VariableInstance& variableInstance){
         // prioritylist (name has to be the same): qualifiedName > filename > closest match on location
-        std::map<int, VariableInstance> possibleMatches;
+        std::map<int, VariableInstance> priorityMatches;
+        std::map<int, VariableInstance> secondaryMatches;
+
         for(int i=0;i<set.size();i++){
             if(set.at(i).qualifiedName == variableInstance.qualifiedName){
-                return i;
+                priorityMatches.insert(std::make_pair(i, set.at(i)));
             }
             if(set.at(i).name == variableInstance.name){
-                possibleMatches.insert(std::make_pair(i, set.at(i)));
+                secondaryMatches.insert(std::make_pair(i, set.at(i)));
             }
         }
-        for(const auto& possibleMatch: possibleMatches){
+        for(const auto& possibleMatch: priorityMatches){
+            // return the first match with the same filename
+            if(possibleMatch.second.filename == variableInstance.filename){
+                return possibleMatch.first;
+            }
+        }
+        // TODO: now filechanges cant be recognized, but i dont have an idea how to do that because trying to include it had the effect of including way to many variables with the same name in different files
+
+        for(const auto& possibleMatch: secondaryMatches){
             // return the first match with the same filename
             if(possibleMatch.second.filename == variableInstance.filename){
                 return possibleMatch.first;
             }
         }
 
-        // TODO: introduce a threshold at which the location is considered to be too far away and then maybe omit the file check
-        // if there isn't even a match with the same filename, return the variable with the closest matching location
-        int smallestDiff = std::numeric_limits<int>::max();
-        int candidate = -1;
-        for (const auto &item: possibleMatches){
-            auto matrix = matcher::levenshteinDistance(item.second.location, variableInstance.location);
-            if(smallestDiff > matrix[item.second.location.size()][variableInstance.location.size()]){
-                smallestDiff = matrix[item.second.location.size()][variableInstance.location.size()];
-                candidate = item.first;
-            }
-        }
-
-        return candidate;
+        return -1;
     }
     public:
         VariableAnalyser(const std::vector<VariableInstance>& oldVariables, const std::vector<VariableInstance>& newVariables, OutputHandler* outputHandler){
