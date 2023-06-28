@@ -17,6 +17,7 @@ namespace functionanalysis{
         std::vector<std::pair<std::string, std::pair<std::string, std::string>>> params;
         std::string body;
         std::vector<std::string> location;
+        std::string filePosition;
         std::vector<FunctionInstance> declarations;
         std::string filename;
         std::string scope;

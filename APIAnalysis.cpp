@@ -48,9 +48,9 @@ std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendAc
     return std::unique_ptr<FrontendActionFactory>(new SimpleFrontendActionFactory(args...));
 }
 
-int findFunctionInstance(std::vector<FunctionInstance>* program, const string& qualifiedName, const string& filename){
+int findFunctionInstance(std::vector<FunctionInstance>* program, const string& filePos){
     for(int i = 0; i < program->size(); i++){
-        if(program->at(i).qualifiedName == qualifiedName && program->at(i).filename == filename){
+        if(program->at(i).filePosition == filePos){
             return i;
         }
     }
@@ -63,19 +63,48 @@ string getFunctionDeclFilename(FunctionDecl* functionDecl, clang::ASTContext *Co
     return filename;
 }
 
+vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* functionDecl, clang::ASTContext *Context){
+    vector<pair<string, pair<string, string>>> params;
+    unsigned int numParam = functionDecl->getNumParams();
+    for(int i=0;i<numParam;i++){
+        auto paramDecl = functionDecl->getParamDecl(i);
+        std::string defaultParam;
+        if(paramDecl->hasDefaultArg()){
+        auto start = paramDecl->getDefaultArg()->getBeginLoc(), end = paramDecl->getDefaultArg()->getEndLoc();
+        LangOptions lang;
+        SourceManager *sm = &(Context->getSourceManager());
+        auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+        defaultParam = std::string(sm->getCharacterData(start),
+                                   sm->getCharacterData(endToken) - sm->getCharacterData(start));
+
+        }
+        params.push_back(std::make_pair(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam)));
+    }
+    return params;
+}
+
+string getLocation(FunctionDecl* functionDecl){
+    SourceManager &sourceManager = functionDecl->getASTContext().getSourceManager();
+    SourceRange sourceRange = functionDecl->getSourceRange();
+
+    return sourceRange.getBegin().printToString(sourceManager);
+}
+
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
     std::vector<FunctionInstance>* program;
     std::string dir;
     std::vector<variableanalysis::VariableInstance>* variables;
     std::vector<objectanalysis::ObjectInstance>* objects;
     std::vector<std::string> files;
+    std::map<std::string, FunctionInstance>* mapOfDeclarations;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files, std::map<std::string, FunctionInstance>* mapOfDeclarations) : Context(Context){
         this->program = program;
         this->dir = directory;
         this->variables = variables;
         this->objects = objects;
         this->files = files;
+        this->mapOfDeclarations = mapOfDeclarations;
     }
 
     FunctionInstance createFunctionInstance(FunctionDecl* functionDecl){
@@ -166,21 +195,7 @@ public:
             functionInstance.memberFunctionSpecifier = "pure";
         }
 
-        unsigned int numParam = functionDecl->getNumParams();
-        for(int i=0;i<numParam;i++){
-            auto paramDecl = functionDecl->getParamDecl(i);
-            std::string defaultParam;
-            if(paramDecl->hasDefaultArg()){
-                auto start = paramDecl->getDefaultArg()->getBeginLoc(), end = paramDecl->getDefaultArg()->getEndLoc();
-                LangOptions lang;
-                SourceManager *sm = &(Context->getSourceManager());
-                auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
-                defaultParam = std::string(sm->getCharacterData(start),
-                                           sm->getCharacterData(endToken) - sm->getCharacterData(start));
-
-            }
-            functionInstance.params.push_back(std::make_pair(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam)));
-        }
+        functionInstance.params = getFunctionParams(functionDecl, Context);
 
         // gets a vector of all the classes / namespaces a function is part of e.g. simple::example::function() -> [simple, example]
         std::string fullName = functionDecl->getQualifiedNameAsString();
@@ -209,7 +224,7 @@ public:
                 SourceManager *sm = &(Context->getSourceManager());
                 auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
                 if(sm->getCharacterData(endToken) - sm->getCharacterData(start)) {
-                    //functionInstance.body = std::string(sm->getCharacterData(start),sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                    functionInstance.body = std::string(sm->getCharacterData(start),sm->getCharacterData(endToken) - sm->getCharacterData(start));
                 }
             }
         } else {
@@ -228,6 +243,8 @@ public:
         auto entireHeader = Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceManager, LangOptions(), nullptr).str();
         entireHeader = entireHeader.substr(0, entireHeader.find('{'));
         entireHeader.erase(std::remove(entireHeader.begin(), entireHeader.end(), '\n'), entireHeader.end());
+
+        functionInstance.filePosition = getLocation(functionDecl);
 
         functionInstance.fullHeader = entireHeader;
 
@@ -298,7 +315,6 @@ public:
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
-
         if(!getAccessSpelling(functionDecl->getAccess()).empty() && getAccessSpelling(functionDecl->getAccess()) != "public"){
             return true;
         }
@@ -308,29 +324,36 @@ public:
         if(std::find(files.begin(), files.end(), filename) == files.end()){
             return true;
         }
-
+        // TODO: reverse this if statement
+        auto functionInstance = createFunctionInstance(functionDecl);
         if(!functionDecl->isThisDeclarationADefinition()){
             if(functionDecl->isDefined()){
-                if(auto position = findFunctionInstance(program, functionDecl->getDefinition()->getQualifiedNameAsString(),
-                                        getFunctionDeclFilename(functionDecl, Context, dir)) != -1){
-                    auto functionInstance = createFunctionInstance(functionDecl);
+                auto position = findFunctionInstance(program, getLocation(functionDecl->getDefinition()));
+                if(position != -1){
                     program->at(position).declarations.push_back(functionInstance);
                 }else{
-                    auto functionInstance = createFunctionInstance(functionDecl);
                     auto definition = createFunctionInstance(functionDecl->getDefinition());
                     definition.declarations.push_back(functionInstance);
                     program->push_back(definition);
                 }
             }else{
-                //TODO: currently no support for function declarations without definitions -> this would necessitate multiple additional iterations over the found functions, because clang doesnt seem to recognize definitions properly...
-                //program->push_back(functionInstance);
+                mapOfDeclarations->insert(make_pair(getLocation(functionDecl), functionInstance));
             }
+
+            //mapOfDeclarations->insert(make_pair(getLocation(functionDecl), functionInstance));
         }else{
-            if(findFunctionInstance(program, functionDecl->getDefinition()->getQualifiedNameAsString(),
-                                    getFunctionDeclFilename(functionDecl, Context, dir)) == -1){
-                auto functionInstance = createFunctionInstance(functionDecl);
+            if(findFunctionInstance(program, functionInstance.filePosition) == -1){
                 program->push_back(functionInstance);
             }
+            /*
+            if(!functionDecl->decls_empty()){
+                for(auto temp = functionDecl->decls_begin(); temp != functionDecl->decls_end(); temp++){
+                    if(auto decl = temp->getAsFunction()) {
+                        functionInstance.declarations.push_back(createFunctionInstance(decl));
+                    }
+                }
+            }
+            */
         }
         return true;
     };
@@ -356,6 +379,7 @@ public:
 
         variableInstance.name = varDecl->getNameAsString();
         variableInstance.qualifiedName = varDecl->getQualifiedNameAsString();
+
         variableInstance.type = varDecl->getType().getAsString();
 
         // gets the File Name
@@ -525,7 +549,7 @@ private:
 
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string>& files) : apiAnalysisVisitor(Context, program, dir, var, objects, files){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string>& files, std::map<std::string, FunctionInstance>* mapOfDeclarations) : apiAnalysisVisitor(Context, program, dir, var, objects, files, mapOfDeclarations){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -542,22 +566,26 @@ class APIAnalysisAction : public clang::ASTFrontendAction {
     std::vector<variableanalysis::VariableInstance>* var;
     std::vector<objectanalysis::ObjectInstance>* obj;
     std::vector<std::string> files;
+    std::map<std::string, FunctionInstance>* mapOfDeclarations;
 public:
-    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files){
+    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files, std::map<std::string, FunctionInstance>* mapOfDeclarations){
         this->p=program;
         this->directory = dir;
         this->var = var;
         this->obj = objects;
         this->files = files;
+        this->mapOfDeclarations = mapOfDeclarations;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
         Compiler.getDiagnostics().setClient(new clang::IgnoringDiagConsumer(), true);
-        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj, files);
+        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj, files, mapOfDeclarations);
     }
 
 private:
 };
+
+void insertUndefinedDeclarations(vector<FunctionInstance> vector1, map<std::string, FunctionDecl *> map1);
 
 std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& functions){
     std::vector<FunctionInstance> output;
@@ -580,7 +608,7 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
         }
         item.declarations.push_back(item);
     }
-    outs()<<functions.size()<<"\n";
+
     // delete all the declarations from the list
     for (int i=0;i<functions.size();i++)
     {
@@ -659,6 +687,20 @@ std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance
     }
 
     return output;
+}
+
+void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std::string, FunctionInstance>* declarations) {
+    outs()<<"Started with " << declarations->size() << " declarations\n";
+    for (auto &def : *definitions) {
+        for (const auto &decl: def.declarations){
+            declarations->erase(decl.filePosition);
+        }
+    }
+
+    outs()<<"There are " << declarations->size() << " undefined declarations\n";
+    for (const auto &item: *declarations){
+        definitions->push_back(item.second);
+    }
 }
 
 int main(int argc, const char **argv) {
@@ -797,6 +839,8 @@ int main(int argc, const char **argv) {
     std::vector<std::string> relativeListOfOldFiles;
     std::vector<std::string> relativeListOfNewFiles;
 
+    std::map<std::string, FunctionInstance> mapOfDeclarations;
+
     relativeListOfOldFiles.reserve(oldFiles.size());
     for (const auto &item: oldFiles){
         relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
@@ -806,7 +850,12 @@ int main(int argc, const char **argv) {
         relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
     }
 
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles).get());
+    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations).get());
+
+    insertUndefinedDeclarations(&oldProgram, &mapOfDeclarations);
+
+    mapOfDeclarations.clear();
+
     ClangTool newTool(*newCD,
                    newFiles);
 
@@ -822,18 +871,17 @@ int main(int argc, const char **argv) {
         newTool.appendArgumentsAdjuster(adjuster);
     }
 
-    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles).get());
+    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles, &mapOfDeclarations).get());
+
+    insertUndefinedDeclarations(&newProgram, &mapOfDeclarations);
 
     outs()<<"All functions, objects and variables were processed\n";
     outs()<<"In total "<<oldProgram.size()<<" functions, "<<oldObjects.size()<<" objects and "<<oldVariables.size()<<" variables were found in the old version of the project\n";
     outs()<<"In total "<<newProgram.size()<<" functions, "<<newObjects.size()<<" objects and "<<newVariables.size()<<" variables were found in the new version of the project\n";
 
-    //oldProgram = assignDeclarations(oldProgram);
-    //newProgram = assignDeclarations(newProgram);
-
-    // TODO: and i fear, same here
-    oldProgram = assignSpecializations(oldProgram);
-    newProgram = assignSpecializations(newProgram);
+    // TODO: and i fear, same here (that rhymes :D)
+    //oldProgram = assignSpecializations(oldProgram);
+    //newProgram = assignSpecializations(newProgram);
 
     // TODO: same problem as the function equivalent, it takes way to long..
     oldVariables = assignDeclarations(oldVariables);

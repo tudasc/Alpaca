@@ -154,12 +154,12 @@ namespace helper {
         return output.substr(0, output.length()-2) + ">";
     }
 
-    bool paramsAreEqual(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc){
-        if(oldFunc.params.size() != newFunc.params.size()){
+    bool paramsAreEqual(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& param1, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& param2){
+        if(param1.size() != param2.size()){
             return false;
         }
-        for(unsigned int i = 0; i < oldFunc.params.size(); i++){
-            if(oldFunc.params.at(i).first != newFunc.params.at(i).first){
+        for(unsigned int i = 0; i < param1.size(); i++){
+            if(param1.at(i).first != param2.at(i).first){
                 return false;
             }
         }

@@ -14,5 +14,5 @@ namespace helper {
     std::string retrieveFunctionHeader(const functionanalysis::FunctionInstance& func);
     std::string getAllTemplateParamsAsString(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& templateParams);
     std::string getSingleTemplateParamAsString(const std::pair<std::string, std::pair<std::string, std::string>>& templateParam);
-    bool paramsAreEqual(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc);
+    bool paramsAreEqual(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& param1, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& param2);
 }
