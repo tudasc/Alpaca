@@ -70,12 +70,12 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
         auto paramDecl = functionDecl->getParamDecl(i);
         std::string defaultParam;
         if(paramDecl->hasDefaultArg()){
-        auto start = paramDecl->getDefaultArg()->getBeginLoc(), end = paramDecl->getDefaultArg()->getEndLoc();
-        LangOptions lang;
-        SourceManager *sm = &(Context->getSourceManager());
-        auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
-        defaultParam = std::string(sm->getCharacterData(start),
-                                   sm->getCharacterData(endToken) - sm->getCharacterData(start));
+            auto start = paramDecl->getDefaultArg()->getBeginLoc(), end = paramDecl->getDefaultArg()->getEndLoc();
+            LangOptions lang;
+            SourceManager *sm = &(Context->getSourceManager());
+            auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+            defaultParam = std::string(sm->getCharacterData(start),
+                                       sm->getCharacterData(endToken) - sm->getCharacterData(start));
 
         }
         params.push_back(std::make_pair(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam)));
@@ -83,11 +83,14 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
     return params;
 }
 
-string getLocation(FunctionDecl* functionDecl){
+string getLocation(FunctionDecl* functionDecl, const string& dir){
     SourceManager &sourceManager = functionDecl->getASTContext().getSourceManager();
     SourceRange sourceRange = functionDecl->getSourceRange();
-
-    return sourceRange.getBegin().printToString(sourceManager);
+    auto relative = sourceRange.getBegin().printToString(sourceManager);
+    auto startOfLoc = relative.substr(0, relative.find_last_of(':')).find_last_of(':');
+    auto loc = relative.substr(startOfLoc, relative.size());
+    relative = relative.substr(0, startOfLoc);
+    return filesystem::relative(filesystem::path(relative), dir).string() + loc;
 }
 
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
@@ -109,11 +112,9 @@ public:
 
     FunctionInstance createFunctionInstance(FunctionDecl* functionDecl){
 
-        clockingThing += 1;
-        if(clockingThing % 1000 == 0){
-            outs().flush();
-            outs() << clockingThing<< "\n";
-            outs() << functionDecl->getQualifiedNameAsString()<< "\n";
+        clockingThing++;
+        if(clockingThing % 400 == 0){
+            outs() << clockingThing << "\n";
         }
 
         FunctionInstance functionInstance;
@@ -223,9 +224,12 @@ public:
                 LangOptions lang;
                 SourceManager *sm = &(Context->getSourceManager());
                 auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
-                if(sm->getCharacterData(endToken) - sm->getCharacterData(start)) {
-                    functionInstance.body = std::string(sm->getCharacterData(start),sm->getCharacterData(endToken) - sm->getCharacterData(start));
-                }
+                //if(sm->getCharacterData(endToken) - sm->getCharacterData(start)) {
+                    //functionInstance.body = std::string(sm->getCharacterData(start),sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                //}
+                SourceRange sourceRange = functionDecl->getBody()->getSourceRange();
+                functionInstance.body = Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), functionDecl->getASTContext().getSourceManager(), LangOptions(), nullptr).str();
+
             }
         } else {
             // marks the function as a Declaration and doesn't save the body
@@ -244,7 +248,7 @@ public:
         entireHeader = entireHeader.substr(0, entireHeader.find('{'));
         entireHeader.erase(std::remove(entireHeader.begin(), entireHeader.end(), '\n'), entireHeader.end());
 
-        functionInstance.filePosition = getLocation(functionDecl);
+        functionInstance.filePosition = getLocation(functionDecl, dir);
 
         functionInstance.fullHeader = entireHeader;
 
@@ -319,16 +323,22 @@ public:
             return true;
         }
 
-        FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
-        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
+        auto filename = getFunctionDeclFilename(functionDecl, Context, dir);
         if(std::find(files.begin(), files.end(), filename) == files.end()){
             return true;
         }
-        // TODO: reverse this if statement
-        auto functionInstance = createFunctionInstance(functionDecl);
+
         if(!functionDecl->isThisDeclarationADefinition()){
-            if(functionDecl->isDefined()){
-                auto position = findFunctionInstance(program, getLocation(functionDecl->getDefinition()));
+            if(functionDecl->isDefined() || functionDecl->getDefinition()){
+                FunctionInstance functionInstance;
+                if(mapOfDeclarations->find(getLocation(functionDecl, dir)) != mapOfDeclarations->end()){
+                    functionInstance = mapOfDeclarations->at(getLocation(functionDecl, dir));
+                }else{
+                    functionInstance = createFunctionInstance(functionDecl);
+                    mapOfDeclarations->insert(make_pair(getLocation(functionDecl, dir), functionInstance));
+                }
+
+                auto position = findFunctionInstance(program, getLocation(functionDecl->getDefinition(), dir));
                 if(position != -1){
                     program->at(position).declarations.push_back(functionInstance);
                 }else{
@@ -337,12 +347,15 @@ public:
                     program->push_back(definition);
                 }
             }else{
-                mapOfDeclarations->insert(make_pair(getLocation(functionDecl), functionInstance));
+                if(mapOfDeclarations->find(getLocation(functionDecl, dir)) != mapOfDeclarations->end()){
+                    return true;
+                }
+                auto functionInstance = createFunctionInstance(functionDecl);
+                mapOfDeclarations->insert(make_pair(getLocation(functionDecl, dir), functionInstance));
             }
-
-            //mapOfDeclarations->insert(make_pair(getLocation(functionDecl), functionInstance));
         }else{
-            if(findFunctionInstance(program, functionInstance.filePosition) == -1){
+            if(findFunctionInstance(program, getLocation(functionDecl->getDefinition(), dir)) == -1){
+                auto functionInstance = createFunctionInstance(functionDecl);
                 program->push_back(functionInstance);
             }
             /*
@@ -380,7 +393,12 @@ public:
         variableInstance.name = varDecl->getNameAsString();
         variableInstance.qualifiedName = varDecl->getQualifiedNameAsString();
 
-        variableInstance.type = varDecl->getType().getAsString();
+        auto fullType = varDecl->getType().getAsString();
+        // TODO: well...
+        if(fullType.find(" at ") != std::string::npos && fullType.find("(unnamed ") != std::string::npos){
+            fullType = fullType.substr(0, fullType.find(" at ")) + ")";
+        }
+        variableInstance.type = fullType;
 
         // gets the File Name
         FullSourceLoc FullLocation = Context->getFullLoc(varDecl->getBeginLoc());
@@ -403,7 +421,7 @@ public:
         if(varDecl->getStorageClass() == clang::StorageClass::SC_Extern){
             variableInstance.storageClass = "extern";
         }
-        // check if static
+            // check if static
         else if(varDecl->getStorageClass() == clang::StorageClass::SC_Static){
             variableInstance.storageClass = "static";
         }
@@ -468,8 +486,12 @@ public:
 
         variableInstance.name = decl->getNameAsString();
         variableInstance.qualifiedName = decl->getQualifiedNameAsString();
-        variableInstance.type = decl->getType().getAsString();
-
+        auto fullType = decl->getType().getAsString();
+        // TODO: well...
+        if(fullType.find(" at ") != std::string::npos && fullType.find("(unnamed ") != std::string::npos){
+            fullType = fullType.substr(0, fullType.find(" at ")) + ")";
+        }
+        variableInstance.type = fullType;
         if(decl->hasInClassInitializer()){
             auto expr = decl->getInClassInitializer();
             APValue apValue;
@@ -585,8 +607,6 @@ public:
 private:
 };
 
-void insertUndefinedDeclarations(vector<FunctionInstance> vector1, map<std::string, FunctionDecl *> map1);
-
 std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& functions){
     std::vector<FunctionInstance> output;
     std::vector<FunctionInstance> usedDeclarations;
@@ -690,6 +710,21 @@ std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance
 }
 
 void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std::string, FunctionInstance>* declarations) {
+    outs()<<"time check start\n";
+    for (auto &def: *definitions){
+        for (const auto &decl: *declarations){
+            if(def.qualifiedName == "two_phase_exch_and_write" && decl.second.qualifiedName == "two_phase_exch_and_write"){
+                outs() << "here\n";
+                auto check = def.isCorrectDeclaration(decl.second);
+            }
+            if(def.qualifiedName == decl.second.qualifiedName){
+                if(def.isCorrectDeclaration(decl.second)){
+                    def.declarations.push_back(decl.second);
+                }
+            }
+        }
+    }
+    outs()<<"time check end\n";
     outs()<<"Started with " << declarations->size() << " declarations\n";
     for (auto &def : *definitions) {
         for (const auto &decl: def.declarations){
@@ -698,7 +733,7 @@ void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std:
     }
 
     outs()<<"There are " << declarations->size() << " undefined declarations\n";
-    for (const auto &item: *declarations){
+    for (auto &item: *declarations){
         definitions->push_back(item.second);
     }
 }
@@ -880,12 +915,12 @@ int main(int argc, const char **argv) {
     outs()<<"In total "<<newProgram.size()<<" functions, "<<newObjects.size()<<" objects and "<<newVariables.size()<<" variables were found in the new version of the project\n";
 
     // TODO: and i fear, same here (that rhymes :D)
-    //oldProgram = assignSpecializations(oldProgram);
-    //newProgram = assignSpecializations(newProgram);
+    oldProgram = assignSpecializations(oldProgram);
+    newProgram = assignSpecializations(newProgram);
 
     // TODO: same problem as the function equivalent, it takes way to long..
-    oldVariables = assignDeclarations(oldVariables);
-    newVariables = assignDeclarations(newVariables);
+    //oldVariables = assignDeclarations(oldVariables);
+    //newVariables = assignDeclarations(newVariables);
 
     OutputHandler* outputHandler;
     if(jsonOutput){
@@ -896,7 +931,7 @@ int main(int argc, const char **argv) {
     outs()<<"The objectanalysis started with "<< oldObjects.size() << "objects \n";
     // Analysing Objects
     objectanalysis::ObjectAnalyser objectAnalyser = objectanalysis::ObjectAnalyser(oldObjects, newObjects, outputHandler);
-    objectAnalyser.compareObjects();
+    //objectAnalyser.compareObjects();
     outs()<<"The functionanalysis started " << oldProgram.size() << " funcs \n";
     // Analysing Functions
     FunctionAnalyser analyser = FunctionAnalyser(oldProgram, newProgram, outputHandler);
@@ -904,7 +939,7 @@ int main(int argc, const char **argv) {
     outs()<<"The variableanalysis started " << oldVariables.size() << " variables \n";
     // Analysing Variables
     variableanalysis::VariableAnalyser variableAnalyser = variableanalysis::VariableAnalyser(oldVariables, newVariables, outputHandler);
-    variableAnalyser.compareVariables();
+    //variableAnalyser.compareVariables();
 
     outputHandler->printOut();
 

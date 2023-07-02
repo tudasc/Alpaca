@@ -18,8 +18,10 @@ namespace variableanalysis {
         for(int i=0;i<set.size();i++){
             if(set.at(i).qualifiedName == variableInstance.qualifiedName){
                 priorityMatches.insert(std::make_pair(i, set.at(i)));
-            }
-            if(set.at(i).name == variableInstance.name){
+                if(set.at(i).equals(variableInstance)){
+                    return i;
+                }
+            }else if(set.at(i).name == variableInstance.name){
                 secondaryMatches.insert(std::make_pair(i, set.at(i)));
             }
         }
@@ -51,6 +53,7 @@ namespace variableanalysis {
                 if(oldVar.accessSpecifier == "private" || oldVar.accessSpecifier == "protected"){
                     continue;
                 }
+
                 outputHandler->initialiseVariableInstance(oldVar);
                 auto indexInNew = findVariable(newVariables, oldVar);
                 if(indexInNew != -1){
