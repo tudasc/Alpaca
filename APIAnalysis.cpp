@@ -713,6 +713,7 @@ std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance
 
 void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std::string, FunctionInstance>* declarations) {
     outs()<<"time check start\n";
+    /*
     for (auto &def: *definitions){
         for (const auto &decl: *declarations){
             if(def.qualifiedName == "two_phase_exch_and_write" && decl.second.qualifiedName == "two_phase_exch_and_write"){
@@ -726,6 +727,7 @@ void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std:
             }
         }
     }
+    */
     outs()<<"time check end\n";
     outs()<<"Started with " << declarations->size() << " declarations\n";
     for (auto &def : *definitions) {
