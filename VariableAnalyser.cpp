@@ -11,6 +11,7 @@ namespace variableanalysis {
         std::vector<VariableInstance> newVariables;
         OutputHandler* outputHandler;
     int findVariable(const std::vector<VariableInstance>& set, const VariableInstance& variableInstance){
+        // TODO: check if there are more than one variable with the same name and if yes, use the filename as another identifer
         // prioritylist (name has to be the same): qualifiedName > filename > closest match on location
         std::map<int, VariableInstance> priorityMatches;
         std::map<int, VariableInstance> secondaryMatches;

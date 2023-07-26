@@ -14,6 +14,7 @@ namespace variableanalysis{
         std::string defaultValue;
         std::vector<std::string> location;
         std::string filename;
+        std::string filePosition;
         std::string storageClass;
         bool isInline;
         std::string accessSpecifier;
