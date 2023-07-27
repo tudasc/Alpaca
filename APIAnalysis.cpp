@@ -256,12 +256,10 @@ public:
 
         functionInstance.declarations.push_back(functionInstance);
 
-
         return functionInstance;
     }
 
     bool VisitRecordDecl(clang::RecordDecl *recordDecl){
-        return true;
         if(!Context->getSourceManager().isInMainFile(recordDecl->getLocation())){
             return true;
         }
@@ -323,7 +321,6 @@ public:
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
-        return true;
         if(!getAccessSpelling(functionDecl->getAccess()).empty() && getAccessSpelling(functionDecl->getAccess()) != "public"){
             return true;
         }
