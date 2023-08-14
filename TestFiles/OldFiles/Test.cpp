@@ -23,6 +23,8 @@ template <> int specDeleted(int x, int y){
     return 10;
 }
 
+void checkingSpecificConfiguration(int x, int y, int z, int q);
+
 template <typename T> T templateParamAdded(T x, T y){
     return x + y + x;
 }

@@ -23,6 +23,7 @@ namespace objectanalysis{
         std::string qualifiedName;
         std::vector<std::string> location;
         std::string filename;
+        std::string filePosition;
         bool isAbstract;
         bool isFinal;
     };

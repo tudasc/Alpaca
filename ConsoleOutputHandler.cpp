@@ -36,7 +36,6 @@ public:
         this->startingMessage += "Qualified (old) variable name: " + var.qualifiedName + "\n";
         this->startingMessage += "Type: " + var.type + "\n";
         this->startingMessage += "Filename: " + var.filename + "\n";
-        this->startingMessage += "Default value: " + var.defaultValue + "\n";
         this->startingMessage += "-----------------------\n";
         output = startingMessage;
     }
@@ -206,10 +205,6 @@ public:
 
     void outputVariableTypeChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
         output += "The variable type changed from " + oldVar.type + " to " + newVar.type + "\n";
-    }
-
-    void outputVariableDefaultValueChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-        output += "The variable default value in the definition in file " + newVar.filename + "changed from " + oldVar.defaultValue + " to " + newVar.defaultValue + "\n";
     }
 
     void outputVariableStorageClassChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
