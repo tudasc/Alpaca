@@ -26,7 +26,7 @@ namespace functionanalysis{
             return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc, newFunc) && oldFunc.filePosition != newFunc.filePosition;
         }
 
-        static int findFunction(const std::vector<FunctionInstance>& set, const FunctionInstance& oldFunc){
+        int findFunction(const std::vector<FunctionInstance>& set, const FunctionInstance& oldFunc){
             int tempSafe = -1;
             for(int i=0;i<set.size();i++){
                 if(set.at(i).qualifiedName == oldFunc.qualifiedName && set.at(i).filename == oldFunc.filename){
@@ -41,6 +41,17 @@ namespace functionanalysis{
                     //}
                 }else{
                     tempSafe = checkIfADeclarationMatches(set.at(i), oldFunc) && oldFunc.name == set.at(i).name ? i : tempSafe;
+                }
+            }
+
+            for(auto& overloadedSet : newOverloadedFunctions){
+                if(overloadedSet.at(0).name != oldFunc.name) continue;
+                for(auto& func : overloadedSet){
+                    if(func.qualifiedName == oldFunc.qualifiedName && func.filename == oldFunc.filename){
+                        // signals that the searched function is now overloaded
+                        // TODO: add disclaimer
+                        return -2;
+                    }
                 }
             }
 
@@ -134,6 +145,7 @@ namespace functionanalysis{
             //for (auto const &func: oldProgram) {
             //#pragma omp parallel for default(none) shared(docEnabled, includePrivate, counter, outputHandler) private(oldProgram, newProgram)
             for(int i=0;i<oldProgram.size();i++) {
+
                 counter++;
                 if(counter % 2000 == 0){
                     outs() << "Analysed " << counter << " functions\n";
@@ -141,11 +153,6 @@ namespace functionanalysis{
                 FunctionInstance func = oldProgram.at(i);
 
                 if (func.scope == "private" && !includePrivate) {
-                    //i++;
-                    continue;
-                }
-
-                if (func.name == "main") {
                     //i++;
                     continue;
                 }
@@ -182,6 +189,9 @@ namespace functionanalysis{
                     }
                     outputHandler->endOfCurrentFunction();
                     //++i;
+                } else if(index == -2){
+                    // function is newly overloaded and has to be added to the overloaded functions
+                    overloadedFunctions.push_back({func});
                 } else{
                     outputHandler->initialiseFunctionInstance(func);
                     FunctionInstance newFunc = newProgram.at(index);

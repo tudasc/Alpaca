@@ -257,6 +257,9 @@ public:
         else if(functionDecl->getStorageClass() == clang::StorageClass::SC_PrivateExtern){
             functionInstance.storageClass = "private extern";
         }
+        else if(functionDecl->getStorageClass() == clang::StorageClass::SC_Register){
+            functionInstance.storageClass = "register";
+        }
 
         if(functionDecl->isVirtualAsWritten() && functionDecl->isPure()){
             functionInstance.memberFunctionSpecifier = "pure virtual";
@@ -264,6 +267,10 @@ public:
             functionInstance.memberFunctionSpecifier = "virtual";
         }else if(functionDecl->isPure()){
             functionInstance.memberFunctionSpecifier = "pure";
+        }
+        // TODO: technically doesnt belong here, but the they are mutally exclusive so works for now
+        else if(functionDecl->getFriendObjectKind() == Decl::FriendObjectKind::FOK_Declared || functionDecl->getFriendObjectKind() == Decl::FriendObjectKind::FOK_Undeclared){
+            functionInstance.memberFunctionSpecifier = "friend";
         }
 
         functionInstance.params = getFunctionParams(functionDecl, Context);
