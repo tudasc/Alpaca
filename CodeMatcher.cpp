@@ -43,8 +43,8 @@ namespace matcher{
         }
         double distance = matcher::levenshteinDistance(convertStringToVector(strippedOldCode),
                                                                         convertStringToVector(strippedNewCode))[strippedOldCode.length()][strippedNewCode.length()];
-        double sum = strippedOldCode.length() + strippedNewCode.length();
-        return ((sum - distance) / sum) * 100;
+        unsigned long longest = std::max(strippedOldCode.length(),strippedNewCode.length());
+        return (1-distance/longest) * 100;
     }
 
     /*
