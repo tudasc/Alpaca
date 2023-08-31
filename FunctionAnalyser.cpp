@@ -23,7 +23,7 @@ namespace functionanalysis{
 
         static bool isFunctionOverloaded(const FunctionInstance& oldFunc, const FunctionInstance& newFunc){
             // overloaded Functions have to have the same qualified name (i.e. be in the same namespace) and share at least one declaration position (definitions don´t have to be in the same file) : if one of the declarations is empty, the definition is the declaration
-            return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc, newFunc) && oldFunc.filePosition != newFunc.filePosition;
+            return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc, newFunc);
         }
 
         int findFunction(const std::vector<FunctionInstance>& set, const FunctionInstance& oldFunc){
