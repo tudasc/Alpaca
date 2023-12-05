@@ -164,4 +164,33 @@ namespace helper {
             return param.first + " " + param.second.first;
         }
     }
+
+    std::vector<std::string> excludeFiles(const std::string &path, std::vector<std::string> *listOfFiles, const std::vector<std::string>* excludedFiles){
+        std::vector<std::string> output = std::vector<std::string>();
+        for (const auto &item: *listOfFiles){
+            bool found = false;
+            for (const auto &exc: *excludedFiles){
+                auto compexc = path + "/" + exc;
+                compexc = fs::canonical(compexc);
+                if(compexc == "/home/paul/api-change-detection/testLibraries/llvm13/llvm"){
+                    llvm::errs() << "compexc: " << compexc << "\n";
+                    llvm::errs() << "item: " << item << "\n";
+                }
+                if(item.length() < compexc.length()){
+                    continue;
+                }
+                auto sca = item.substr(0, compexc.length());
+                if(item.substr(0, compexc.length()) == compexc){
+                    found = true;
+                    listOfFiles->erase(std::remove(listOfFiles->begin(), listOfFiles->end(), item), listOfFiles->end());
+                    break;
+                }
+            }
+            if(!found){
+                output.push_back(item);
+            }
+        }
+        return output;
+    }
+
 }

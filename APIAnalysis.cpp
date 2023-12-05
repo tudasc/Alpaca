@@ -108,6 +108,10 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
         auto paramDecl = functionDecl->getParamDecl(i);
         std::string defaultParam;
         if(paramDecl->hasDefaultArg()){
+            auto test = paramDecl->getDefaultArg();
+            auto name = paramDecl->getNameAsString();
+            auto location = functionDecl->getSourceRange();
+            auto filename = getFunctionDeclFilename(functionDecl, Context, "");
             auto start = paramDecl->getDefaultArg()->getBeginLoc();
             auto end = paramDecl->getDefaultArg()->getEndLoc();
             SourceManager *sm = &(Context->getSourceManager());
@@ -866,6 +870,9 @@ int main(int argc, const char **argv) {
             ("exclude, exc", "Add directories or files [separated with a comma] that should be ignored (relative Path from the root of the directory) WARNING: only use if the project structure has not changed", cxxopts::value<std::vector<std::string>>())
             ("exclude-new, excN", "Add directories or files [separated with a comma] of the new program that should be ignored (relative Path from the given new directory)", cxxopts::value<std::vector<std::string>>())
             ("exclude-old, excO", "Add directories or files [separated with a comma] of the old program that should be ignored (relative Path from the given old directory)", cxxopts::value<std::vector<std::string>>())
+            ("ignore-CD-files, iCDf", "Forcefully ignore the files found in the Compilation Database and instead use the files found by manually searching the given folders")
+            ("ignore-CD-files-old, iCDfO", "Forcefully ignore the files found in the Compilation Database of the old project and instead use the files found by manually searching the given folders")
+            ("ignore-CD-files-new, iCDfN", "Forcefully ignore the files found in the Compilation Database of the new project and instead use the files found by manually searching the given folders")
             ("h,help", "Print usage")
             ;
     auto result = options.parse(argc, argv);
@@ -902,7 +909,6 @@ int main(int argc, const char **argv) {
     if(result.count("oldDir")){
         listFiles(result["oldDir"].as<std::string>(), &oldFiles, &oldExcludedItems);
         outs()<<"The old directory contains " + itostr(oldFiles.size()) + " files\n";
-
     }else{
         throw std::invalid_argument("The older version of the project has to be specified");
     }
@@ -919,6 +925,10 @@ int main(int argc, const char **argv) {
     bool outputPrivateFunctions = result["ipf"].as<bool>();
 
     bool jsonOutput = result["json"].as<bool>();
+
+    bool ignoreCDFiles = result["ignore-CD-files"].as<bool>();
+    bool ignoreCDFilesOld = result["ignore-CD-files-old"].as<bool>();
+    bool ignoreCDFilesNew = result["ignore-CD-files-new"].as<bool>();
 
     // lists of functions
     std::vector<FunctionInstance> oldProgram;
@@ -953,27 +963,41 @@ int main(int argc, const char **argv) {
     if(result.count("oldCD")){
         std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
         oldCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);
-        oldFiles.clear();
-        oldFiles = oldCD->getAllFiles();
-        outs() << oldFiles.size() << " old files will be processed.\n";
+        if(oldCD && !ignoreCDFilesOld && !ignoreCDFiles){
+            oldFiles.clear();
+            oldFiles = oldCD->getAllFiles();
+            oldFiles = helper::excludeFiles(result["oldDir"].as<std::string>(), &oldFiles, &oldExcludedItems);
+        }
     }
 
     if(result.count("newCD")){
         std::string errorMessage = "Could not load the specified new compilation Database, trying to find one in the project files\n";
         newCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["newCD"].as<std::string>()).string(), errorMessage);
-        newFiles.clear();
-        newFiles = newCD->getAllFiles();
-        outs() << newFiles.size() << " new files will be processed.\n";
+        if(newCD && !ignoreCDFilesNew && !ignoreCDFiles){
+            newFiles.clear();
+            newFiles = newCD->getAllFiles();
+            newFiles = helper::excludeFiles(result["newDir"].as<std::string>(), &newFiles, &newExcludedItems);
+        }
     }
 
     std::string errorMessage="No Compilation database could be found in the old directory, loading the standard empty compilation database";
     if(!oldCD) {
         oldCD = CompilationDatabase::autoDetectFromDirectory(
                 std::filesystem::canonical(result["oldDir"].as<std::string>()).string(), errorMessage);
+        if(oldCD && !ignoreCDFilesOld && !ignoreCDFiles){
+            oldFiles.clear();
+            oldFiles = oldCD->getAllFiles();
+            oldFiles = helper::excludeFiles(result["oldDir"].as<std::string>(), &oldFiles, &oldExcludedItems);
+        }
     }
     if(!newCD) {
         newCD = CompilationDatabase::autoDetectFromDirectory(
                 std::filesystem::canonical(result["newDir"].as<std::string>()).string(), errorMessage);
+        if(newCD && !ignoreCDFilesNew && !ignoreCDFiles){
+            newFiles.clear();
+            newFiles = newCD->getAllFiles();
+            newFiles = helper::excludeFiles(result["newDir"].as<std::string>(), &newFiles, &newExcludedItems);
+        }
     }
 
     // check if the compilation databases exist, otherwise use the standard provided in the build directory

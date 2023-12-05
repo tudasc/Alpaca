@@ -183,7 +183,7 @@ public:
 
     void outputTemplateParameterDeleted(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) override {
         foundIndividualChanges++;
-        output += "The template parameter " + helper::getSingleTemplateParamAsString(oldFunc.params.at(oldPosition)) + " was deleted at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+        output += "The template parameter " + helper::getSingleTemplateParamAsString(oldFunc.templateParams.at(oldPosition)) + " was deleted at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
     }
 
     void outputTemplateParameterChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
