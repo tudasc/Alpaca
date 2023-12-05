@@ -108,6 +108,12 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
         auto paramDecl = functionDecl->getParamDecl(i);
         std::string defaultParam;
         if(paramDecl->hasDefaultArg()){
+            // get the default argument as a string without using the Lexer
+            std::string defaultArgStr;
+            llvm::raw_string_ostream defaultArgStream(defaultArgStr);
+            paramDecl->getDefaultArg()->printPretty(defaultArgStream, nullptr, PrintingPolicy(Context->getLangOpts()));
+            defaultParam = defaultArgStream.str();
+            /*
             auto test = paramDecl->getDefaultArg();
             auto name = paramDecl->getNameAsString();
             auto location = functionDecl->getSourceRange();
@@ -118,6 +124,7 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
             auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, Context->getLangOpts());
             defaultParam = std::string(sm->getCharacterData(start),
                                        sm->getCharacterData(endToken) - sm->getCharacterData(start));
+            */
 
         }
         params.emplace_back(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam));
@@ -966,7 +973,7 @@ int main(int argc, const char **argv) {
         if(oldCD && !ignoreCDFilesOld && !ignoreCDFiles){
             oldFiles.clear();
             oldFiles = oldCD->getAllFiles();
-            oldFiles = helper::excludeFiles(result["oldDir"].as<std::string>(), &oldFiles, &oldExcludedItems);
+            oldFiles = helper::excludeFiles(filesystem::canonical(result["oldDir"].as<std::string>()), &oldFiles, &oldExcludedItems);
         }
     }
 
@@ -976,7 +983,7 @@ int main(int argc, const char **argv) {
         if(newCD && !ignoreCDFilesNew && !ignoreCDFiles){
             newFiles.clear();
             newFiles = newCD->getAllFiles();
-            newFiles = helper::excludeFiles(result["newDir"].as<std::string>(), &newFiles, &newExcludedItems);
+            newFiles = helper::excludeFiles(filesystem::canonical(result["newDir"].as<std::string>()), &newFiles, &newExcludedItems);
         }
     }
 
@@ -987,7 +994,7 @@ int main(int argc, const char **argv) {
         if(oldCD && !ignoreCDFilesOld && !ignoreCDFiles){
             oldFiles.clear();
             oldFiles = oldCD->getAllFiles();
-            oldFiles = helper::excludeFiles(result["oldDir"].as<std::string>(), &oldFiles, &oldExcludedItems);
+            oldFiles = helper::excludeFiles(filesystem::canonical(result["oldDir"].as<std::string>()), &oldFiles, &oldExcludedItems);
         }
     }
     if(!newCD) {
@@ -996,7 +1003,7 @@ int main(int argc, const char **argv) {
         if(newCD && !ignoreCDFilesNew && !ignoreCDFiles){
             newFiles.clear();
             newFiles = newCD->getAllFiles();
-            newFiles = helper::excludeFiles(result["newDir"].as<std::string>(), &newFiles, &newExcludedItems);
+            newFiles = helper::excludeFiles(filesystem::canonical(result["newDir"].as<std::string>()), &newFiles, &newExcludedItems);
         }
     }
 
