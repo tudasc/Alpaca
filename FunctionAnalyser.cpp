@@ -197,6 +197,7 @@ namespace functionanalysis{
                     FunctionInstance newFunc = newProgram.at(index);
                     compareFunctionHeader(func, newFunc, false);
                     outputHandler->endOfCurrentFunction();
+                    // TODO: delete the function from the newProgram, so that it is not compared again
                     //++i;
                 }
             }

@@ -18,8 +18,8 @@ namespace objectanalysis{
             // prioritylist (name has to be the same): qualifiedName > filename > closest match on location
             std::map<int, ObjectInstance> possibleMatches;
             for(int i=0;i<set.size();i++){
-                if(set.at(i).qualifiedName == objectInstance.qualifiedName && set.at(i).filePosition == objectInstance.filePosition){
-                    return i;
+                if(set.at(i).qualifiedName == objectInstance.qualifiedName && set.at(i).qualifiedName != "" && set.at(i).qualifiedName != "(anonymous)"){
+                    //return i;
                 }
                 // qualifiedName is included, because anonymous objects dont have a name, but a qualifiedName
                 if(set.at(i).name == objectInstance.name || set.at(i).qualifiedName == objectInstance.qualifiedName){
