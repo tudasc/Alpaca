@@ -171,7 +171,11 @@ namespace helper {
             bool found = false;
             for (const auto &exc: *excludedFiles){
                 auto compexc = path + "/" + exc;
-                compexc = fs::canonical(compexc);
+                try {
+                    compexc = fs::canonical(compexc);
+                } catch (fs::filesystem_error &e) {
+                    continue;
+                }
                 if(item.length() < compexc.length()){
                     continue;
                 }

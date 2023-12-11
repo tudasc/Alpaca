@@ -111,8 +111,15 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
             // get the default argument as a string without using the Lexer
             std::string defaultArgStr;
             llvm::raw_string_ostream defaultArgStream(defaultArgStr);
-            paramDecl->getDefaultArg()->printPretty(defaultArgStream, nullptr, PrintingPolicy(Context->getLangOpts()));
-            defaultParam = defaultArgStream.str();
+            if(paramDecl->getDefaultArg()) {
+                paramDecl->getDefaultArg()->printPretty(defaultArgStream, nullptr,
+                                                        PrintingPolicy(Context->getLangOpts()));
+                defaultParam = defaultArgStream.str();
+            }else {
+                defaultParam = "";
+            }
+
+
             /*
             auto test = paramDecl->getDefaultArg();
             auto name = paramDecl->getNameAsString();
@@ -957,15 +964,6 @@ int main(int argc, const char **argv) {
     std::vector<std::string> relativeListOfOldFiles;
     std::vector<std::string> relativeListOfNewFiles;
 
-    relativeListOfOldFiles.reserve(oldFiles.size());
-    for (const auto &item: oldFiles){
-        relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
-    }
-    relativeListOfNewFiles.reserve(newFiles.size());
-    for (const auto &item: newFiles){
-        relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
-    }
-
     // TODO null check for autodetect CD
     if(result.count("oldCD")){
         std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
@@ -1017,6 +1015,15 @@ int main(int argc, const char **argv) {
     if(!newCD){
         outs()<<"loaded an empty compilation database for the new project\n";
         newCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
+    }
+
+    relativeListOfOldFiles.reserve(oldFiles.size());
+    for (const auto &item: oldFiles){
+        relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
+    }
+    relativeListOfNewFiles.reserve(newFiles.size());
+    for (const auto &item: newFiles){
+        relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
     }
 
     std::map<std::string, FunctionInstance> mapOfDeclarations;
