@@ -165,10 +165,11 @@ namespace helper {
         }
     }
 
-    std::vector<std::string> excludeFiles(const std::string &path, std::vector<std::string> *listOfFiles, const std::vector<std::string>* excludedFiles){
+    std::vector<std::string> excludeFiles(const std::string &path, std::vector<std::string> listOfFiles, const std::vector<std::string>* excludedFiles){
         std::vector<std::string> output = std::vector<std::string>();
-        for (const auto &item: *listOfFiles){
+        for (int i=0;i<listOfFiles.size();i++){
             bool found = false;
+
             for (const auto &exc: *excludedFiles){
                 auto compexc = path + "/" + exc;
                 try {
@@ -176,18 +177,18 @@ namespace helper {
                 } catch (fs::filesystem_error &e) {
                     continue;
                 }
-                if(item.length() < compexc.length()){
+                if(listOfFiles.at(i).length() < compexc.length()){
                     continue;
                 }
-                auto sca = item.substr(0, compexc.length());
-                if(item.substr(0, compexc.length()) == compexc){
+                auto sca = listOfFiles.at(i).substr(0, compexc.length());
+                if(listOfFiles.at(i).substr(0, compexc.length()) == compexc){
                     found = true;
-                    listOfFiles->erase(std::remove(listOfFiles->begin(), listOfFiles->end(), item), listOfFiles->end());
+                    //listOfFiles.erase(std::remove(listOfFiles.begin(), listOfFiles.end(), listOfFiles.at(i)), listOfFiles.end());
                     break;
                 }
             }
             if(!found){
-                output.push_back(item);
+                output.push_back(listOfFiles.at(i));
             }
         }
         return output;
