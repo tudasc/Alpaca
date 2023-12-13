@@ -975,7 +975,8 @@ int main(int argc, const char **argv) {
         if(oldCD && !ignoreCDFilesOld && !ignoreCDFiles){
             oldFiles.clear();
             oldFiles = oldCD->getAllFiles();
-            oldFiles = helper::excludeFiles(filesystem::canonical(result["oldDir"].as<std::string>()), &oldFiles, &oldExcludedItems);
+            outs()<<oldFiles.size()<<"\n";
+            oldFiles = helper::excludeFiles(filesystem::canonical(result["oldDir"].as<std::string>()), oldFiles, &oldExcludedItems);
         }
     }
 
@@ -985,7 +986,8 @@ int main(int argc, const char **argv) {
         if(newCD && !ignoreCDFilesNew && !ignoreCDFiles){
             newFiles.clear();
             newFiles = newCD->getAllFiles();
-            newFiles = helper::excludeFiles(filesystem::canonical(result["newDir"].as<std::string>()), &newFiles, &newExcludedItems);
+            outs()<<newFiles.size()<<"\n";
+            newFiles = helper::excludeFiles(filesystem::canonical(result["newDir"].as<std::string>()), newFiles, &newExcludedItems);
         }
     }
 
@@ -996,7 +998,7 @@ int main(int argc, const char **argv) {
         if(oldCD && !ignoreCDFilesOld && !ignoreCDFiles){
             oldFiles.clear();
             oldFiles = oldCD->getAllFiles();
-            oldFiles = helper::excludeFiles(filesystem::canonical(result["oldDir"].as<std::string>()), &oldFiles, &oldExcludedItems);
+            oldFiles = helper::excludeFiles(filesystem::canonical(result["oldDir"].as<std::string>()), oldFiles, &oldExcludedItems);
         }
     }
     if(!newCD) {
@@ -1005,7 +1007,7 @@ int main(int argc, const char **argv) {
         if(newCD && !ignoreCDFilesNew && !ignoreCDFiles){
             newFiles.clear();
             newFiles = newCD->getAllFiles();
-            newFiles = helper::excludeFiles(filesystem::canonical(result["newDir"].as<std::string>()), &newFiles, &newExcludedItems);
+            newFiles = helper::excludeFiles(filesystem::canonical(result["newDir"].as<std::string>()), newFiles, &newExcludedItems);
         }
     }
 
