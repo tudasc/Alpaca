@@ -926,14 +926,12 @@ int main(int argc, const char **argv) {
 
     if(result.count("oldDir")){
         listFiles(result["oldDir"].as<std::string>(), &oldFiles, &oldExcludedItems);
-        outs()<<"The old directory contains " + itostr(oldFiles.size()) + " files\n";
     }else{
         throw std::invalid_argument("The older version of the project has to be specified");
     }
 
     if(result.count("newDir")){
         listFiles(result["newDir"].as<std::string>(), &newFiles, &newExcludedItems);
-        outs()<<"The new directory contains " + itostr(newFiles.size()) + " files\n";
     }else{
         throw std::invalid_argument("The older version of the project has to be specified (--oldDir has to be set)");
     }
@@ -975,7 +973,6 @@ int main(int argc, const char **argv) {
         if(oldCD && !ignoreCDFilesOld && !ignoreCDFiles){
             oldFiles.clear();
             oldFiles = oldCD->getAllFiles();
-            outs()<<oldFiles.size()<<"\n";
             oldFiles = helper::excludeFiles(filesystem::canonical(result["oldDir"].as<std::string>()), oldFiles, &oldExcludedItems);
         }
     }
@@ -986,7 +983,6 @@ int main(int argc, const char **argv) {
         if(newCD && !ignoreCDFilesNew && !ignoreCDFiles){
             newFiles.clear();
             newFiles = newCD->getAllFiles();
-            outs()<<newFiles.size()<<"\n";
             newFiles = helper::excludeFiles(filesystem::canonical(result["newDir"].as<std::string>()), newFiles, &newExcludedItems);
         }
     }
@@ -1034,6 +1030,9 @@ int main(int argc, const char **argv) {
 
     std::map<std::string, FunctionInstance> mapOfDeclarations;
     std::map<std::string, VariableInstance> variableDefinitions;
+
+    outs()<<"In the old version " + itostr(oldFiles.size()) + " files are included in the analysis\n";
+    outs()<<"In the new version " + itostr(newFiles.size()) + " files are included in the analysis\n";
 
     int fileCounter = 0;
     for (const auto &item: oldFiles){
