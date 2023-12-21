@@ -37,14 +37,10 @@ namespace matcher{
     double compareFunctionBodies(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) {
         auto strippedNewCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body));
         auto strippedOldCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body));
-        // TODO: reevaluate if it is a good idea to completly ignore empty functions in the comparison
-        if(strippedNewCode == "{}" || strippedOldCode == "{}"){
-            return 0;
-        }
         double distance = matcher::levenshteinDistance(convertStringToVector(strippedOldCode),
                                                                         convertStringToVector(strippedNewCode))[strippedOldCode.length()][strippedNewCode.length()];
-        double sum = strippedOldCode.length() + strippedNewCode.length();
-        return ((sum - distance) / sum) * 100;
+        unsigned long longest = std::max(strippedOldCode.length(),strippedNewCode.length());
+        return (1-distance/longest) * 100;
     }
 
     /*
@@ -52,12 +48,12 @@ namespace matcher{
      */
     vector<string> paramsToFlatString(const vector<pair<string, pair<string, string>>>& param){
         vector<string> output;
-        for (const auto &item: param){
+        for (auto const& item : param){
             string token;
             if(item.second.second.empty()) {
-                token = item.first;
+                token = item.first + " " + item.second.first;
             }else{
-                token = item.first + "=" + item.second.second;
+                token = item.first + " " + item.second.first + "=" + item.second.second;
             }
             output.push_back(token);
         }

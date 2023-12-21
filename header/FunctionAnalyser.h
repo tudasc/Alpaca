@@ -27,7 +27,6 @@ namespace functionanalysis{
         bool isConst;
         bool isTemplateDecl;
         bool isTemplateSpec;
-        bool isOverloaded;
         std::vector<FunctionInstance> templateSpecializations;
         // [type, [name, default value]]
         std::vector<std::pair<std::string, std::pair<std::string, std::string>>> templateParams;

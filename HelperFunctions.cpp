@@ -11,11 +11,11 @@ namespace fs = std::filesystem;
 
 namespace helper {
 
-    std::vector<std::string> acceptedFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx",".cppm"};
+    std::vector<std::string> acceptedFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx"};
 
     void listFiles(const std::string &path, std::vector<std::string>* listOfFiles, const std::vector<std::string>* excludedFiles){
         if(!fs::is_directory(path)){
-            listOfFiles->push_back(fs::canonical(path));
+            listOfFiles->push_back(fs::absolute(path));
             return;
         }
         fs::recursive_directory_iterator it(path);
@@ -23,19 +23,11 @@ namespace helper {
         for(decltype(it) end; it != end; ++it){
             auto iteratedFile = it->path().string();
             if(it->is_directory()) {
-                if (std::find_if(excludedFiles->begin(), excludedFiles->end(), [iteratedFile, path](std::string str){
-                    if(str.at(str.length()-1) == '/' || str.at(str.length()-1) == '\\'){
-                        str = str.substr(0, str.length() - 1);
-                    }
-                    if(str.at(0) == '/' || str.at(0) == '\\'){
-                        str = str.substr(1, str.length());
-                    }
-                    str = path + str;
-                    if(iteratedFile.length() < str.length()){
-                        return false;
-                    }
-                    return str == iteratedFile;
-                }) != excludedFiles->end()){
+                // get the last part of the path without any slashes
+                std::string path = it->path().string();
+                path = path.substr(path.find_last_of('/') + 1, path.length());
+                // check if this folder is present in the excluded files
+                if(std::find(excludedFiles->begin(), excludedFiles->end(), path) != excludedFiles->end()){
                     it.disable_recursion_pending();
                 }
                 continue;
@@ -48,8 +40,7 @@ namespace helper {
             }) != excludedFiles->end() || !(std::find(acceptedFileEndings.begin(), acceptedFileEndings.end(), fs::path(it->path()).extension()) != acceptedFileEndings.end())){
                 continue;
             }
-
-            listOfFiles->push_back(fs::canonical(it->path()));
+            listOfFiles->push_back(fs::absolute(it->path()));
         }
     }
 
@@ -173,4 +164,34 @@ namespace helper {
             return param.first + " " + param.second.first;
         }
     }
+
+    std::vector<std::string> excludeFiles(const std::string &path, std::vector<std::string> listOfFiles, const std::vector<std::string>* excludedFiles){
+        std::vector<std::string> output = std::vector<std::string>();
+        for (int i=0;i<listOfFiles.size();i++){
+            bool found = false;
+
+            for (const auto &exc: *excludedFiles){
+                auto compexc = path + "/" + exc;
+                try {
+                    compexc = fs::canonical(compexc);
+                } catch (fs::filesystem_error &e) {
+                    continue;
+                }
+                if(listOfFiles.at(i).length() < compexc.length()){
+                    continue;
+                }
+                auto sca = listOfFiles.at(i).substr(0, compexc.length());
+                if(listOfFiles.at(i).substr(0, compexc.length()) == compexc){
+                    found = true;
+                    //listOfFiles.erase(std::remove(listOfFiles.begin(), listOfFiles.end(), listOfFiles.at(i)), listOfFiles.end());
+                    break;
+                }
+            }
+            if(!found){
+                output.push_back(listOfFiles.at(i));
+            }
+        }
+        return output;
+    }
+
 }
