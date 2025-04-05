@@ -19,6 +19,13 @@ void paramChange(bool x){
     bool z = x;
 }
 
+namespace nspace
+{
+    class test{
+        void Func(int i) {}
+    };
+}
+
 int main() {
     differentNumberParams(5);
     bool test = false;

@@ -24,6 +24,10 @@ void paramChange(int x){
     int z = x*x;
 }
 
+void paramChange(int x, int y){
+    int z = x*y;
+}
+
 class test {
 public:
     void somethingPublic(){
@@ -34,6 +38,11 @@ private:
         int x = 10;
     }
 };
+
+namespace nspace
+{
+    void Func(int i) {}
+}
 
 int main() {
     differentNumberParams();

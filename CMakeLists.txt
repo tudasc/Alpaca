@@ -26,7 +26,7 @@ set(LLVM_LINK_COMPONENTS support)
 
 #wir wollen eine ausführbare datei erellen, die APIAnalysis heißt
 #und aus der Datei APIAnalysis.cpp gebaut wird
-add_executable(APIAnalysis APIAnalysis.cpp)
+add_executable(APIAnalysis APIAnalysis.cpp HelperFunctions.cpp header/HelperFunctions.h Analyser.cpp header/Analyser.h)
 
 
 #wir wollen zu der executable die bibliothek clangTooling linken
