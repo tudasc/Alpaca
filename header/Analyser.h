@@ -9,8 +9,25 @@ namespace analyse{
         std::string name;
         std::string returnType;
         std::vector<std::string> params;
-        std::vector<std::string> stmts;
-        // TO-DO: include the current namespace of the function
+        std::string body;
+        std::vector<std::string> location;
+        std::string filename;
+        std::string scope;
+        std::string getAsString(){
+            std::string output;
+            output += "\n-----------------" + name + "-----------------\n";
+            output += "Return Type:   " + returnType;
+            output += "\nParams:        ";
+            for (const auto &item: params){
+                output += item + " ";
+            }
+            output += "\nFull Location: ";
+            for (const auto &item: location){
+                output += item + "::";
+            }
+            output += "\nFilename:      " + filename + "\n";
+            return output;
+        };
     };
 
     class Analyser{
@@ -21,7 +38,10 @@ namespace analyse{
 
         private:
             void compareFunctionHeader(FunctionInstance func);
-            std::string findBody(FunctionInstance oldBody);
+            void compareOverloadedFunctionHeader(FunctionInstance func);
+            void compareFunctionHeaderExceptParams(FunctionInstance func, FunctionInstance newFunc);
+            static std::pair<FunctionInstance, double>findBody(FunctionInstance oldFunc, const std::vector<FunctionInstance> funcSubset);
+            std::pair<std::string, double> findBody(FunctionInstance oldBody);
             std::string compareParams(FunctionInstance func, FunctionInstance newFunc);
             std::string compareReturnType(FunctionInstance func, FunctionInstance newFunc);
 

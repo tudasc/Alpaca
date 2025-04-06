@@ -10,7 +10,7 @@ void newReturn(bool* one, int two) {
 }
 
 int itsRenamed(){
-    int test = 0;
+    int two = 0;
     int random = 4;
     return 0;
 }

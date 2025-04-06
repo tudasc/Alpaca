@@ -6,7 +6,14 @@ void differentNumberParams(){
 
 int newReturn(bool* one, int two) {
     two += 10;
+    //random comment
+    // something something // hallo // was // passiert // hier /*
     *one = false;
+    /*
+     gigantischer Code Abschnitt
+     meine
+     Freund
+     */
     return two;
 }
 
