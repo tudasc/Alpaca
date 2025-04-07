@@ -41,9 +41,11 @@ std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendAc
 
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
     std::multimap<std::string, FunctionInstance>* program;
+    std::string dir;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program, std::string directory) : Context(Context){
         this->program = program;
+        this->dir = directory;
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
@@ -76,7 +78,7 @@ public:
 
         // gets the File Name
         FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
-        functionInstance.filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), std::filesystem::current_path());
+        functionInstance.filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
 
         // saves the function body as a string
         auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
@@ -103,7 +105,7 @@ private:
 
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program) : apiAnalysisVisitor(Context, program){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program, std::string dir) : apiAnalysisVisitor(Context, program, dir){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -116,13 +118,15 @@ private:
 
 class APIAnalysisAction : public clang::ASTFrontendAction {
     std::multimap<std::string, FunctionInstance>* p;
+    std::string directory;
 public:
-    explicit APIAnalysisAction(std::multimap<std::string, FunctionInstance>* program){
-        p=program;
+    explicit APIAnalysisAction(std::multimap<std::string, FunctionInstance>* program, std::string dir){
+        this->p=program;
+        this->directory = dir;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
-        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p);
+        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory);
     }
 
 private:
@@ -178,11 +182,11 @@ int main(int argc, const char **argv) {
 
     ClangTool oldTool(*oldCD,
                  oldFiles);
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram).get());
+    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, result["oldDir"].as<std::string>()).get());
 
     ClangTool newTool(*newCD,
                    newFiles);
-    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram).get());
+    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, result["newDir"].as<std::string>()).get());
 
     // Analysing
     Analyser analyser = Analyser(oldProgram, newProgram);

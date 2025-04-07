@@ -19,16 +19,25 @@ namespace analyse{
     }
 
     void Analyser::compareVersions() {
+        // TODO: Maybe ignore main()?
         for (auto const &x: oldProgram) {
             FunctionInstance func = x.second;
+            // skip this function if the old instance was private, because it couldnt have been used by anyone
+            if(func.scope == "private"){
+                continue;
+            }
             findBody(func);
             if (newProgram.count(func.name) <= 0) {
                 auto bodyStatus = findBody(func);
-                if (bodyStatus.first == "") {
+                // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
+                if (bodyStatus.first == "" || newProgram.find(bodyStatus.first)->second.scope == "private"){
                     outs() << "The function \"" + func.name + "\" was most likely deleted\n";
                 } else {
-                    outs() << "The function \"" + func.name + "\" was renamed to \"" + bodyStatus.first + "\" with a code similarity of " + std::to_string(bodyStatus.second) + "%\n";
+                        //TODO: maybe check the rest of the header to confirm suspicion
+                        outs() << "The function \"" + func.name + "\" was renamed to \"" + bodyStatus.first +
+                                  "\" with a code similarity of " + std::to_string(bodyStatus.second) + "%\n";
                 }
+                outs() << "----------------------------------------------------------\n";
             } else if (newProgram.count(func.name) == 1){
                 compareFunctionHeader(func);
             } else {
@@ -113,8 +122,13 @@ namespace analyse{
         // compare the return type
         outs() << compareReturnType(func, newFunc);
 
-        // TO-DO Compare the scope of the functions
+        // compare the scope of the functions
+        outs() << compareScope(func, newFunc);
 
+        outs() << compareNamespaces(func, newFunc);
+
+        outs() << compareFile(func, newFunc);
+        outs() << "----------------------------------------------------------\n";
     }
 
     std::string Analyser::compareParams(FunctionInstance func, FunctionInstance newFunc) {
@@ -136,6 +150,7 @@ namespace analyse{
             //TO-DO: insert a message, that shows which new Parameters where added / what the current stand is
             output.append("The function \"" + func.name + "\" has a new number of parameters. Instead of " +
                           std::to_string(numberOldParams) + " it now has " + std::to_string(numberNewParams) +
+                          "--> " + helper::getAllParamsAsString(newFunc.params) +
                           "\n");
         }
         return output;
@@ -145,5 +160,25 @@ namespace analyse{
         return newFunc.returnType != func.returnType ? "The function \"" + func.name +
                                                        "\" has a new return Type. Instead of \"" + func.returnType +
                                                        "\" it is now: \"" + newFunc.returnType + "\"\n" : "";
+    }
+
+    std::string Analyser::compareScope(FunctionInstance func, FunctionInstance newFunc){
+        return (func.scope != newFunc.scope) ? "The function " + func.name + " is now " + newFunc.scope + "\n" : "";
+    }
+
+    std::string Analyser::compareFile(FunctionInstance func, FunctionInstance newFunc){
+        return (func.filename != newFunc.filename) ? "The function " + func.name + " has moved from the file " +  func.filename + " to the file " + newFunc.filename + "\n" : "";
+    }
+
+    std::string Analyser::compareNamespaces(FunctionInstance func, FunctionInstance newFunc){
+        if(func.location.size() != newFunc.location.size()){
+            return "The function " + func.name + " moved from " + helper::getAllNamespacesAsString(func.location) + " to " + helper::getAllNamespacesAsString(newFunc.location) + "\n";
+        }
+        for(int i=0;i<func.location.size();i++){
+            if(func.location.at(i) != newFunc.location.at(i)){
+                return "The function " + func.name + " moved from " + helper::getAllNamespacesAsString(func.location) + " to " + helper::getAllNamespacesAsString(newFunc.location) + "\n";
+            }
+        }
+        return "";
     }
 }

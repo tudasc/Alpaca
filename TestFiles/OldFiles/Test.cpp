@@ -37,7 +37,8 @@ void overloaded(int x, int y){
 }
 
 void overloaded(int x, int y, int z){
-
+    int v = x + y + z;
+    bool u = true;
 }
 
 void overloaded(int x){
@@ -54,10 +55,21 @@ private:
         int x = 10;
     }
 };
+class switcher{
+    public:
+        bool switchFileButNotClass(int x, int z, int j){
+            return true;
+        }
+};
 
 namespace nspace
 {
     void Func(int i) {}
+    void switchedNamespaceTest(){}
+    class movingNamespace{
+    public:
+        int moveNamespace() {}
+    };
 }
 
 int main() {
