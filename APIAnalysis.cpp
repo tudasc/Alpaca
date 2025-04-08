@@ -59,6 +59,7 @@ public:
         functionInstance.name = functionDecl->getNameAsString();
         functionInstance.returnType = functionDecl->getDeclaredReturnType().getAsString();
 
+
         int numParam = functionDecl->getNumParams();
         for(int i=0;i<numParam;i++){
             functionInstance.params.push_back(functionDecl->getParamDecl(i)->getType().getAsString());
@@ -78,7 +79,11 @@ public:
 
         // gets the File Name
         FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
-        functionInstance.filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
+        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
+        functionInstance.filename = filename;
+
+        // save the qualified name of the function with the file attached to the front
+        functionInstance.qualifiedName = filename.string() + "=>" + fullName;
 
         // saves the function body as a string
         auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
@@ -94,7 +99,7 @@ public:
             functionInstance.scope = getAccessSpelling(functionDecl->getAccess());
         }
 
-        program->insert(std::make_pair(functionInstance.name, functionInstance));
+        program->insert(std::make_pair(functionInstance.qualifiedName, functionInstance));
         return true;
     };
 
