@@ -34,11 +34,11 @@ namespace analyse{
     class Analyser{
 
         public:
-            void compareVersions();
+            void compareVersionsWithDoc(bool docEnabled);
             Analyser( const std::multimap<std::string, FunctionInstance>& oldProgram, const std::multimap<std::string, FunctionInstance>& newProgram);
 
         private:
-            std::pair<std::string, double> findBody(const FunctionInstance& oldBody);
+            std::pair<std::string, double> findBody(const FunctionInstance& oldBody, bool docEnabled);
             std::string compareOverloadedFunctionHeader(const FunctionInstance& func);
             static std::string compareFunctionHeader(const FunctionInstance&, const FunctionInstance&);
             static std::string compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc);

@@ -18,7 +18,7 @@ namespace analyse{
         this->newProgram = newProgram;
     }
 
-    void Analyser::compareVersions() {
+    void Analyser::compareVersionsWithDoc(bool docEnabled) {
         for (auto const &x: oldProgram) {
             FunctionInstance func = x.second;
             // skip this function if the old instance was private, because it couldn't have been used by anyone
@@ -27,7 +27,7 @@ namespace analyse{
             }
 
             if (newProgram.count(func.qualifiedName) <= 0) {
-                auto bodyStatus = findBody(func);
+                auto bodyStatus = findBody(func, docEnabled);
                 // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
                 if (bodyStatus.first.empty()){
                     outs() << "The function \"" + func.name + "\" was most likely deleted\n";
@@ -37,8 +37,12 @@ namespace analyse{
                     if(newFunc.name != func.name){
                         // further checks on the Header to ensure, that this is indeed a renamed function
                         if(compareFunctionHeader(func, newFunc).empty()){
-                            outs() << "The function \"" + func.name + "\" was renamed to \"" + newFunc.name +
-                                      "\" with a code similarity of " + std::to_string(bodyStatus.second) + "%\n";
+                            if(docEnabled) {
+                                outs() << "The function \"" + func.name + "\" was renamed to \"" + newFunc.name +
+                                          "\" with a code similarity of " + std::to_string(bodyStatus.second) + "%\n";
+                            }else{
+                                outs() << "The function \"" + func.name + "\" was renamed to \"" + newFunc.name + ".\n";
+                            }
                         } else {
                             outs() << "The function \"" + func.name + "\" was most likely deleted\n";
                         }
@@ -57,22 +61,32 @@ namespace analyse{
     }
 
 
-    std::pair<std::string, double> Analyser::findBody(const FunctionInstance& oldFunc) {
+
+    std::pair<std::string, double> Analyser::findBody(const FunctionInstance& oldFunc, bool docEnabled) {
         std::string currentHighest = "";
         double currentHighestValue = 0;
         for(auto const &newFunc : newProgram){
-            double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc.second);
+            if(docEnabled) {
+                double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc.second);
 
-            // prioritize functions that have the exact same name and header
-            // TODO: ask to make sure this is the correct way to handle this
-            if (oldFunc.name == newFunc.second.name){
-                return std::make_pair(newFunc.second.qualifiedName, percentageDifference);
-            }
+                // prioritize functions that have the exact same name and header
+                // TODO: ask to make sure this is the correct way to handle this
+                if (oldFunc.name == newFunc.second.name) {
+                    return std::make_pair(newFunc.second.qualifiedName, percentageDifference);
+                }
 
-            if(percentageDifference >= percentageCutOff){
-                if(percentageDifference > currentHighestValue){
-                    currentHighestValue = percentageDifference;
+                if (percentageDifference >= percentageCutOff) {
+                    if (percentageDifference > currentHighestValue) {
+                        currentHighestValue = percentageDifference;
+                        currentHighest = newFunc.second.qualifiedName;
+                    }
+                }
+            }else{
+                // strip code of comments / empty spaces and then compares them
+                if(helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.second.body)) == helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body))){
+                    currentHighestValue = 100;
                     currentHighest = newFunc.second.qualifiedName;
+                    break;
                 }
             }
         }
