@@ -2,5 +2,5 @@
 #include "Analyser.h"
 
 namespace matcher{
-    double compareFunctionBodies(analyse::FunctionInstance oldFunc, analyse::FunctionInstance newFunc);
+    double compareFunctionBodies(const analyse::FunctionInstance& oldFunc, const analyse::FunctionInstance& newFunc);
 }
