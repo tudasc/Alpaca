@@ -50,18 +50,14 @@ public:
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
         // skip this function, if it's declared in the header files
-        if(!Context->getSourceManager().isInMainFile(functionDecl->getLocation()) || !functionDecl->hasBody()){
+        if(!Context->getSourceManager().isInMainFile(functionDecl->getLocation())){
             return true;
         }
-
-        // TODO: reminder that this exists
-        functionDecl->isThisDeclarationADefinition();
 
         FunctionInstance functionInstance;
 
         functionInstance.name = functionDecl->getNameAsString();
         functionInstance.returnType = functionDecl->getDeclaredReturnType().getAsString();
-
 
         unsigned int numParam = functionDecl->getNumParams();
         for(int i=0;i<numParam;i++){
@@ -85,16 +81,22 @@ public:
         auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
         functionInstance.filename = filename;
 
-        // save the qualified name of the function with the file attached to the front
-        functionInstance.qualifiedName = filename.string() + "=>" + fullName;
+        // save the qualified name of the function
+        functionInstance.qualifiedName = functionDecl->getQualifiedNameAsString();
 
-        // saves the function body as a string
-        auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
-        LangOptions lang;
-        SourceManager *sm = &(Context->getSourceManager());
-        auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
-        functionInstance.body = std::string(sm->getCharacterData(start), sm->getCharacterData(endToken)-sm->getCharacterData(start));
-
+        if(functionDecl->isThisDeclarationADefinition()){
+            // saves the function body as a string
+            auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
+            LangOptions lang;
+            SourceManager *sm = &(Context->getSourceManager());
+            auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+            functionInstance.body = std::string(sm->getCharacterData(start),
+                                                sm->getCharacterData(endToken) - sm->getCharacterData(start));
+            functionInstance.isDeclaration = false;
+        } else {
+            // marks the function as a Declaration and doesn't save the body
+            functionInstance.isDeclaration = true;
+        }
         // get the scope of the functions (for some reason global functions don't have an access value, so it is set manually)
         if(getAccessSpelling(functionDecl->getAccess()).empty()){
             functionInstance.scope = "public";
@@ -140,6 +142,31 @@ public:
 private:
 };
 
+void assignDeclarations(std::multimap<std::string, FunctionInstance>& functions){
+    for (auto &item: functions){
+        if(item.second.isDeclaration){
+            continue;
+        }
+        // find all instances of this particular qualified name
+        for (auto[it, end] = functions.equal_range(item.first); it != end; it++)
+        {
+            // if the current is a matching declaration, it is added to the FunctionItem item
+            if(item.second.isCorrectDeclaration(it->second)){
+                item.second.declarations.push_back(&it->second);
+            }
+        }
+    }
+
+    // delete all the declarations from the list
+    for (std::multimap<std::string, FunctionInstance>::iterator iter = functions.begin(); iter != functions.end();)
+    {
+        std::multimap<std::string, FunctionInstance>::iterator erase_iter = iter++;
+
+        // removes the function if it is a declaration
+        if (erase_iter->second.isDeclaration)
+            functions.erase(erase_iter);
+    }
+}
 
 int main(int argc, const char **argv) {
 
@@ -180,10 +207,12 @@ int main(int argc, const char **argv) {
 
     // check if the compilation databases exist, otherwise use the standard provided in the build directory
     if(!oldCD){
+        outs()<<"loaded the standard compilation database for the old project (c++)\n";
         // put a standard empty CompilationDatabase here
         oldCD = CompilationDatabase::loadFromDirectory(std::filesystem::current_path().string(), errorMessage);
     }
     if(!newCD){
+        outs()<<"loaded the standard compilation database for the new project (c++)\n";
         newCD = CompilationDatabase::loadFromDirectory(std::filesystem::current_path().string(), errorMessage);
     }
 
@@ -194,6 +223,9 @@ int main(int argc, const char **argv) {
     ClangTool newTool(*newCD,
                    newFiles);
     newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, result["newDir"].as<std::string>()).get());
+
+    assignDeclarations(oldProgram);
+    assignDeclarations(newProgram);
 
     // Analysing
     Analyser analyser = Analyser(oldProgram, newProgram);

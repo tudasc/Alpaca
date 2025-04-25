@@ -3,21 +3,25 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <clang/AST/RecursiveASTVisitor.h>
+
 
 namespace analyse{
     struct FunctionInstance {
+        bool isDeclaration;
         std::string name;
         std::string qualifiedName;
         std::string returnType;
         std::vector<std::string> params;
         std::string body;
         std::vector<std::string> location;
-        std::string filenameOfDeclaration;
+        std::vector<const FunctionInstance*> declarations;
         std::string filename;
         std::string scope;
         std::string getAsString(){
             std::string output;
             output += "\n-----------------" + name + "-----------------\n";
+            output += "Is a Declaration: " + isDeclaration;
             output += "Return Type:   " + returnType;
             output += "\nParams:        ";
             for (const auto &item: params){
@@ -27,12 +31,36 @@ namespace analyse{
             for (const auto &item: location){
                 output += item + "::";
             }
-            output += "\nFilename:      " + filename + "\n";
+            output += "\nFilename:      " + filename;
+
+            if(!isDeclaration){
+                output += "\nHas declarations in:  ";
+                for (const auto &item: declarations){
+                    output += item->filename + "--";
+                }
+            }
+            output += "\n";
             return output;
         };
-        bool isCorrectDeclaration(const FunctionInstance& decl){
-            // TODO: implement logic that checks if the given FunctionInstance is the Declaration of this Instance
-            return false;
+        bool isCorrectDeclaration(const FunctionInstance& decl) const {
+
+            if(!decl.isDeclaration){
+                return false;
+            }
+
+            // check if the params match
+            if(params.size() == decl.params.size()){
+                for (int i = 0; i < params.size(); ++i) {
+                    if(params.at(i) != decl.params.at(i)){
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+
+            // check if the rest of the functions match (qualified name check includes the location check)
+            return (decl.qualifiedName == qualifiedName && decl.returnType == returnType && decl.scope == scope);
         }
     };
 
