@@ -3,6 +3,8 @@
 #include "header/CodeMatcher.h"
 #include "header/HelperFunctions.h"
 #include <cmath>
+#include "header/JSONFile.h"
+#include "include/json.hpp"
 
 
 using namespace llvm;

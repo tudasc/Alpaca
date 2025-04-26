@@ -4,7 +4,9 @@
 #include <map>
 #include <vector>
 #include <clang/AST/RecursiveASTVisitor.h>
+#include "../include/json.hpp"
 
+using json = nlohmann::json;
 
 namespace analyse{
     struct FunctionInstance {
@@ -62,12 +64,6 @@ namespace analyse{
             // check if the rest of the functions match (qualified name check includes the location check)
             return (decl.qualifiedName == qualifiedName && decl.returnType == returnType && decl.scope == scope);
         }
-    };
-
-    struct file {
-        std::string name;
-        std::string fullPath;
-        std::vector <FunctionInstance> functions;
     };
 
     class Analyser{
