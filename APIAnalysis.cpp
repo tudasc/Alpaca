@@ -2,6 +2,7 @@
 #include <clang/Frontend/FrontendActions.h>
 #include "clang/Tooling/Tooling.h"
 #include <clang/AST/RecursiveASTVisitor.h>
+#include "clang/Tooling/ArgumentsAdjusters.h"
 #include <clang/Frontend/CompilerInstance.h>
 #include <llvm/Support/CommandLine.h>
 
@@ -171,12 +172,23 @@ void assignDeclarations(std::multimap<std::string, FunctionInstance>& functions)
 int main(int argc, const char **argv) {
 
     cxxopts::Options options("APIAnalysis", "Compares two versions of a C++ API and prints out the differences");
+    // TODO: add a bundled option for the CD and the extra args that are used for both projects
     options.add_options()
             ("doc, deep-overload-comparison", "Enables the statistical comparison of function bodies")
-            ("newDir, newDirectory", "Path to the newer version", cxxopts::value<std::string>())
-            ("oldDir, oldDirectory", "Path to the older version", cxxopts::value<std::string>());
-
+            ("newDir, newDirectory", "Path to the newer version of the project - REQUIRED", cxxopts::value<std::string>())
+            ("oldDir, oldDirectory", "Path to the older version of the project - REQUIRED", cxxopts::value<std::string>())
+            ("oldCD, oldCompilationDatabase", "Path to the compilation database of the old directory", cxxopts::value<std::string>())
+            ("newCD, newCompilationDatabase", "Path to the compilation database of the new directory", cxxopts::value<std::string>())
+            ("extra-args-old, extra-arguments-old", "Add additional clang arguments for the old project, separated with ,", cxxopts::value<std::vector<std::string>>())
+            ("extra-args-new, extra-arguments-new", "Add additional clang arguments for the new project, separated with ,", cxxopts::value<std::vector<std::string>>())
+            ("h,help", "Print usage")
+            ;
     auto result = options.parse(argc, argv);
+
+    if(result.count("help")){
+        outs()<<options.help();
+        return 0;
+    }
 
     std::vector<std::string> oldFiles;
     std::vector<std::string> newFiles;
@@ -192,20 +204,40 @@ int main(int argc, const char **argv) {
     if(result.count("newDir")){
         listFiles(result["newDir"].as<std::string>(), &newFiles);
         outs()<<"The new directory contains " + itostr(newFiles.size()) + " files\n";
-
     }else{
-        throw std::invalid_argument("The older version of the project has to be specified");
+        throw std::invalid_argument("The older version of the project has to be specified (--oldDir has to be set)");
     }
+
     bool docEnabled = result["doc"].as<bool>();
 
     std::multimap<std::string, FunctionInstance> oldProgram;
     std::multimap<std::string, FunctionInstance> newProgram;
 
-    std::string errorMessage="The Compilation-database could not be found";
-    auto oldCD = CompilationDatabase::loadFromDirectory(std::filesystem::canonical(result["oldDir"].as<std::string>()).string(),errorMessage);
-    auto newCD = CompilationDatabase::loadFromDirectory(std::filesystem::canonical(result["newDir"].as<std::string>()).string(),errorMessage);
+    std::unique_ptr<CompilationDatabase> oldCD;
+    std::unique_ptr<CompilationDatabase> newCD;
+
+    if(result.count("oldCD")){
+        std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
+        oldCD = FixedCompilationDatabase::loadFromFile(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);
+    }
+
+    if(result.count("newCD")){
+        std::string errorMessage = "Could not load the specified new compilation Database, trying to find one in the project files\n";
+        newCD = FixedCompilationDatabase::loadFromFile(std::filesystem::canonical(result["newCD"].as<std::string>()).string(), errorMessage);
+    }
+
+    std::string errorMessage="No Compilation database could be found in the old directory, loading the standard empty compilation database";
+    if(!oldCD) {
+        oldCD = CompilationDatabase::autoDetectFromDirectory(
+                std::filesystem::canonical(result["oldDir"].as<std::string>()).string(), errorMessage);
+    }
+    if(!newCD) {
+        newCD = CompilationDatabase::autoDetectFromDirectory(
+                std::filesystem::canonical(result["newDir"].as<std::string>()).string(), errorMessage);
+    }
 
     // check if the compilation databases exist, otherwise use the standard provided in the build directory
+    errorMessage = "Fatal error, the standard compilation database couldn't be loaded";
     if(!oldCD){
         outs()<<"loaded the standard compilation database for the old project (c++)\n";
         // put a standard empty CompilationDatabase here
@@ -218,10 +250,20 @@ int main(int argc, const char **argv) {
 
     ClangTool oldTool(*oldCD,
                       oldFiles);
+    if(result.count("extra-args-old")) {
+        CommandLineArguments args = result["extra-args-old"].as<std::vector<std::string>>();
+        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+        oldTool.appendArgumentsAdjuster(adjuster);
+    }
     oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, result["oldDir"].as<std::string>()).get());
 
     ClangTool newTool(*newCD,
                    newFiles);
+    if(result.count("extra-args-new")) {
+        CommandLineArguments args = result["extra-args-new"].as<std::vector<std::string>>();
+        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+        newTool.appendArgumentsAdjuster(adjuster);
+    }
     newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, result["newDir"].as<std::string>()).get());
 
     assignDeclarations(oldProgram);
