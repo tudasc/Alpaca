@@ -62,7 +62,10 @@ public:
 
         unsigned int numParam = functionDecl->getNumParams();
         for(int i=0;i<numParam;i++){
-            functionInstance.params.push_back(functionDecl->getParamDecl(i)->getType().getAsString());
+
+            auto paramDecl = functionDecl->getParamDecl(i);
+            // TODO: Check if I can / should strip keywords like const or &
+            functionInstance.params.push_back(std::make_pair(paramDecl->getType().getAsString(), paramDecl->getNameAsString()));
         }
 
         // gets a vector of all the classes / namespaces a function is part of e.g. simple::example::function() -> [simple, example]
@@ -86,6 +89,7 @@ public:
         functionInstance.qualifiedName = functionDecl->getQualifiedNameAsString();
 
         if(functionDecl->isThisDeclarationADefinition()){
+            functionInstance.isDeclaration = false;
             // saves the function body as a string
             auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
             LangOptions lang;
@@ -93,7 +97,6 @@ public:
             auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
             functionInstance.body = std::string(sm->getCharacterData(start),
                                                 sm->getCharacterData(endToken) - sm->getCharacterData(start));
-            functionInstance.isDeclaration = false;
         } else {
             // marks the function as a Declaration and doesn't save the body
             functionInstance.isDeclaration = true;
@@ -153,7 +156,7 @@ void assignDeclarations(std::multimap<std::string, FunctionInstance>& functions)
         {
             // if the current is a matching declaration, it is added to the FunctionItem item
             if(item.second.isCorrectDeclaration(it->second)){
-                item.second.declarations.push_back(&it->second);
+                item.second.declarations.push_back(it->second);
             }
         }
     }
@@ -172,13 +175,14 @@ void assignDeclarations(std::multimap<std::string, FunctionInstance>& functions)
 int main(int argc, const char **argv) {
 
     cxxopts::Options options("APIAnalysis", "Compares two versions of a C++ API and prints out the differences");
-    // TODO: add a bundled option for the CD and the extra args that are used for both projects
     options.add_options()
             ("doc, deep-overload-comparison", "Enables the statistical comparison of function bodies")
+            ("ipf,include-private-functions", "Include private functions in the output")
             ("newDir, newDirectory", "Path to the newer version of the project - REQUIRED", cxxopts::value<std::string>())
             ("oldDir, oldDirectory", "Path to the older version of the project - REQUIRED", cxxopts::value<std::string>())
             ("oldCD, oldCompilationDatabase", "Path to the compilation database of the old directory", cxxopts::value<std::string>())
             ("newCD, newCompilationDatabase", "Path to the compilation database of the new directory", cxxopts::value<std::string>())
+            ("extra-args, extra-arguments", "Add additional clang arguments for both projects, separated with ,", cxxopts::value<std::vector<std::string>>())
             ("extra-args-old, extra-arguments-old", "Add additional clang arguments for the old project, separated with ,", cxxopts::value<std::vector<std::string>>())
             ("extra-args-new, extra-arguments-new", "Add additional clang arguments for the new project, separated with ,", cxxopts::value<std::vector<std::string>>())
             ("h,help", "Print usage")
@@ -209,6 +213,8 @@ int main(int argc, const char **argv) {
     }
 
     bool docEnabled = result["doc"].as<bool>();
+
+    bool outputPrivateFunctions = result["ipf"].as<bool>();
 
     std::multimap<std::string, FunctionInstance> oldProgram;
     std::multimap<std::string, FunctionInstance> newProgram;
@@ -250,6 +256,13 @@ int main(int argc, const char **argv) {
 
     ClangTool oldTool(*oldCD,
                       oldFiles);
+
+    if(result.count("extra-args")) {
+        CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
+        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+        oldTool.appendArgumentsAdjuster(adjuster);
+    }
+
     if(result.count("extra-args-old")) {
         CommandLineArguments args = result["extra-args-old"].as<std::vector<std::string>>();
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
@@ -259,6 +272,13 @@ int main(int argc, const char **argv) {
 
     ClangTool newTool(*newCD,
                    newFiles);
+
+    if(result.count("extra-args")) {
+        CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
+        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+        newTool.appendArgumentsAdjuster(adjuster);
+    }
+
     if(result.count("extra-args-new")) {
         CommandLineArguments args = result["extra-args-new"].as<std::vector<std::string>>();
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
@@ -272,7 +292,7 @@ int main(int argc, const char **argv) {
     // Analysing
     Analyser analyser = Analyser(oldProgram, newProgram);
 
-    analyser.compareVersionsWithDoc(docEnabled);
+    analyser.compareVersionsWithDoc(docEnabled, outputPrivateFunctions);
 
     outs()<<"\n";
     return 0;

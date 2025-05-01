@@ -20,11 +20,16 @@ namespace analyse{
         this->newProgram = newProgram;
     }
 
-    void Analyser::compareVersionsWithDoc(bool docEnabled) {
+    void Analyser::compareVersionsWithDoc(bool docEnabled, bool includePrivate) {
         for (auto const &x: oldProgram) {
             FunctionInstance func = x.second;
+
+            if(func.scope == "private" && !includePrivate){
+                continue;
+            }
+
             // skip this function if the old instance was private, because it couldn't have been used by anyone
-            if(func.scope == "private" || func.name == "main" || func.isDeclaration){
+            if(func.name == "main" || func.isDeclaration){
                 continue;
             }
 
@@ -171,6 +176,8 @@ namespace analyse{
 
         output += compareFile(func, newFunc);
 
+        output += compareDeclarations(func, newFunc);
+
         return output;
     }
 
@@ -182,9 +189,9 @@ namespace analyse{
             for (auto newIt = newFunc.params.begin(), oldIt = func.params.begin();
                  newIt != newFunc.params.end() && oldIt != func.params.end();
                  ++newIt, ++oldIt) {
-                if ((*oldIt) != (*newIt)) {
-                    output.append("The parameter type \"" + (*oldIt) + "\" of the function \"" + newFunc.name +
-                                  "\" has changed to \"" + (*newIt) + "\"\n");
+                if ((oldIt->first) != (newIt->first)) {
+                    output.append("The parameter type \"" + (oldIt->first) + "\" of the function \"" + newFunc.name +
+                                  "\" has changed to \"" + (newIt->first) + "\"\n");
                 }
             }
         } else {
@@ -207,7 +214,6 @@ namespace analyse{
     }
 
     std::string Analyser::compareFile(const FunctionInstance& func, const FunctionInstance& newFunc){
-        // TODO: Include declaration movement
         return (func.filename != newFunc.filename) ? "The function " + func.name + " has moved from the file " +  func.filename + " to the file " + newFunc.filename + "\n" : "";
     }
 
@@ -221,5 +227,37 @@ namespace analyse{
             }
         }
         return "";
+    }
+
+    std::vector<std::string> compareFilenameVectors(const std::vector<FunctionInstance>& decl1, const std::vector<FunctionInstance>& decl2){
+        std::vector<std::string> output;
+        for(const auto& oldDecl : decl1){
+            bool found = false;
+            for(const auto& newDecl : decl2){
+                if(oldDecl.filename == newDecl.filename){
+                    found = true;
+                }
+            }
+            if(!found){
+                output.push_back(oldDecl.filename);
+            }
+        }
+        return output;
+    }
+
+    std::string Analyser::compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc){
+        auto deletedDecl = compareFilenameVectors(func.declarations, newFunc.declarations);
+        auto newDecl = compareFilenameVectors(newFunc.declarations, func.declarations);
+
+        std::string output = "";
+        if(deletedDecl.size() > 0){
+            output += "A declaration of + " + func.name + "was deleted in these files: " + helper::getAllNamespacesAsString(deletedDecl) + "\n";
+        }
+
+        if(newDecl.size() > 0){
+            output += "A declaration of" + newFunc.name + "was added in these files: " + helper::getAllNamespacesAsString(newDecl) + "\n";
+        }
+
+        return output;
     }
 }
