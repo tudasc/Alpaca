@@ -18,6 +18,7 @@ class JSONOutputHandler : public OutputHandler {
 public:
     std::map<string, JSONFile> files;
     JSONFunction* currentFunc;
+    std::string currentFile;
 
     JSONOutputHandler(){
         this->files = std::map<string, JSONFile>();
@@ -25,25 +26,26 @@ public:
 
     // TODO: Clean this up to make sure no classes without changes are printed
     void initialiseFunctionInstance(const analyse::FunctionInstance &func) override {
-        if(files.count(func.filename) > 0) {
-            files.find(func.filename)->second.functions.push_back(JSONFunction(func.name, func.params));
-        } else {
+        if(files.count(func.filename) == 0) {
             JSONFile newFile = JSONFile(func.filename);
-            newFile.functions.push_back(JSONFunction(func.name, func.params));
             files.insert(make_pair(newFile.file, newFile));
         }
-        currentFunc = &files.find(func.filename)->second.functions.at(files.find(func.filename)->second.functions.size()-1);
+        currentFunc = new JSONFunction(func.name, func.params);
+        currentFile = func.filename;
     }
 
     // TODO: Add checks for default values
     void outputNewParam(int position, const analyse::FunctionInstance& newFunc, int numberOfNewParams) override{
         std::string insertionLocation;
+        std::string reference;
         if(position == 0){
             insertionLocation = "before";
+            reference = "";
         }else{
             insertionLocation = "after";
+            reference = newFunc.params.at(position-1).second;
         }
-        InsertAction insertAction = InsertAction("parameter", insertionLocation, newFunc.params.at(position).second, newFunc.params.at(position).first + " " + newFunc.params.at(position).second, "");
+        InsertAction insertAction = InsertAction("parameter", insertionLocation, reference, newFunc.params.at(position).first + " " + newFunc.params.at(position).second, "");
         currentFunc->insertActions.push_back(insertAction);
     }
 
@@ -93,18 +95,50 @@ public:
     }
 
     void outputRenamedFunction(const analyse::FunctionInstance &newFunc, std::string oldName, std::string percentage) override {
-        // TODO: ask if this is okay
         ReplaceAction replaceAction = ReplaceAction("function name", oldName, newFunc.name);
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    bool printOut() override {
-        std::ofstream output("output.json");
+    vector<JSONFile> getFilesAsVector(){
+        vector<JSONFile> output;
         for (const auto &item: files){
-            json j = item.second;
-            output << j << std::endl;
+            output.push_back(item.second);
         }
+        return output;
+    }
+
+    bool printOut() override {
+
+        /* remove all empty functions
+        for (const auto &item: files){
+            vector<JSONFunction> newFunc = vector<JSONFunction>();
+            for (const auto &func: item.second.functions){
+                if(func.replaceActions.size() != 0 || func.removeActions.size() != 0 || func.insertActions.size() != 0){
+                    newFunc.push_back(func);
+                }
+            }
+            files.find(item.first)->second.functions = newFunc;
+        }
+         */
+        // remove all empty files
+        for(const auto &item : files){
+            if(item.second.functions.size() == 0){
+                files.erase(item.first);
+            }
+        }
+
+        std::ofstream output("output.json");
+        json j = getFilesAsVector();
+        output << j << std::endl;
         return true;
+    }
+
+    bool endOfCurrentFunction() override{
+        if(currentFunc->replaceActions.size() != 0 || currentFunc->removeActions.size() != 0 || currentFunc->insertActions.size() != 0){
+            files.find(currentFile)->second.functions.push_back(*currentFunc);
+            return true;
+        }
+        return false;
     }
 
     virtual ~JSONOutputHandler(){}
