@@ -3,6 +3,7 @@
 #include "header/CodeMatcher.h"
 #include "header/HelperFunctions.h"
 #include "ConsoleOutputHandler.cpp"
+#include "JSONOutputHandler.cpp"
 
 
 using namespace llvm;
@@ -22,8 +23,7 @@ namespace analyse{
         if(!JSONOutput){
             outputHandler = new ConsoleOutputHandler();
         }else{
-            // TODO: JSON implementation
-            throw new exception();
+            outputHandler = new JSONOutputHandler();
         }
     }
 
@@ -41,6 +41,8 @@ namespace analyse{
             }
 
             outputHandler->initialiseFunctionInstance(func);
+            outs()<< func.name + "\n";
+
 
             if (newProgram.count(func.qualifiedName) <= 0) {
                 auto bodyStatus = findBody(func, docEnabled);
@@ -139,8 +141,6 @@ namespace analyse{
         // compare the params without overloading
         output += compareParams(func, newFunc, false);
 
-        outs()<< func.name + "\n";
-
         outs()<< output;
         outs()<<"\n";
 
@@ -213,23 +213,48 @@ namespace analyse{
                 }
             }
         }
+        // a parameter was added
         else if(numberNewParams > numberOldParams) {
-            // a parameter was added
-            for(int i=0;i<numberOldParams;i++){
-                if ((func.params.at(i).first) != (newFunc.params.at(i).first)) {
+            // all arguments added breaks the normal algorithm, so it has to be handled separately
+            if(numberOldParams == 0){
+                for(int i=0;i<numberNewParams;i++){
                     if(!internalUse) outputHandler->outputNewParam(i, newFunc, 1);
                 }
-                if(!internalUse) outputHandler->outputNewParam(numberOldParams, newFunc, numberNewParams - numberOldParams);
+            }else{
+                int offset = 0;
+                for(int i=0;i<numberNewParams;i++){
+                    // prevents an out of range error
+                    if(i-offset >= numberOldParams){
+                        offset++;
+                    }
+                    if ((func.params.at(i-offset).first) != (newFunc.params.at(i).first)) {
+                        offset++;
+                        if(!internalUse) outputHandler->outputNewParam(i, newFunc, 1);
+                    }
+                }
             }
             output = true;
         }
         else {
-            // a parameter was deleted
-            for(int i=0;i<numberNewParams;i++){
-                if ((func.params.at(i).first) != (newFunc.params.at(i).first)) {
+            // all arguments deleted breaks the normal algorithm, so it has to be handled separately
+            if(numberNewParams == 0){
+                for(int i=0;i<numberNewParams;i++){
                     if(!internalUse) outputHandler->outputDeletedParam(i, func.params, newFunc, 1);
                 }
-                if(!internalUse) outputHandler->outputDeletedParam(i, func.params, newFunc, numberOldParams - numberNewParams);
+            } else {
+                int offset = 0;
+                // a parameter was deleted
+                for(int i = 0; i < numberOldParams; i++) {
+                    // prevents an out of range error
+                    if(i-offset >= numberNewParams){
+                        offset++;
+                    }
+
+                    if ((func.params.at(i).first) != (newFunc.params.at(i - offset).first)) {
+                        offset++;
+                        if (!internalUse) outputHandler->outputDeletedParam(i, func.params, newFunc, 1);
+                    }
+                }
             }
             output = true;
         }
