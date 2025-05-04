@@ -41,7 +41,6 @@ namespace analyse{
             }
 
             outputHandler->initialiseFunctionInstance(func);
-            outs()<< func.name + "\n";
 
 
             if (newProgram.count(func.qualifiedName) <= 0) {
@@ -142,14 +141,7 @@ namespace analyse{
         // compare the params without overloading
         output += compareParams(func, newFunc, false);
 
-        outs()<< output;
-        outs()<<"\n";
-
         output += compareFunctionHeaderExceptParams(func, newFunc);
-
-        outs()<<output;
-        outs()<<"\n";
-
 
         return output;
     }
