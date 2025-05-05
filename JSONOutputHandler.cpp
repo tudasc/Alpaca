@@ -24,7 +24,6 @@ public:
         this->files = std::map<string, JSONFile>();
     }
 
-    // TODO: Clean this up to make sure no classes without changes are printed
     void initialiseFunctionInstance(const analyse::FunctionInstance &func) override {
         if(files.count(func.filename) == 0) {
             JSONFile newFile = JSONFile(func.filename);
@@ -34,7 +33,6 @@ public:
         currentFile = func.filename;
     }
 
-    // TODO: Add checks for default values
     void outputNewParam(int position, const analyse::FunctionInstance& newFunc, int numberOfNewParams) override{
         std::string insertionLocation;
         std::string reference;
@@ -65,17 +63,21 @@ public:
     }
 
     void outputNewScope(const analyse::FunctionInstance &newFunc, std::string oldScope) override {
-        // TODO: should i treat this as a remove action?
+        if(newFunc.scope == "private"){
+            // handle this like a function deletion
+
+        } // otherwise do nothing, as no action makes sense here?
     }
 
     void outputNewNamespaces(const analyse::FunctionInstance &newFunc, const analyse::FunctionInstance& oldFunc) override {
-        // TODO: treat a namespace switch as a replace action or a remove -> insert action?
         ReplaceAction replaceAction = ReplaceAction("namespace", helper::getAllNamespacesAsString(oldFunc.location), helper::getAllNamespacesAsString(newFunc.location));
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputNewFilename(const analyse::FunctionInstance &newFunc, std::string oldName) override{
-        // TODO: ask how to handle
+    void outputNewFilename(const analyse::FunctionInstance &newFunc, const analyse::FunctionInstance &oldFunc) override{
+        // remove function in file 1
+        RemoveAction removeAction = RemoveAction("function", helper::retrieveFunctionHeader(oldFunc));
+        // insert function in file 2?
     }
 
     void outputNewDeclPositions(const analyse::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
@@ -87,7 +89,7 @@ public:
     }
 
     void outputDeletedFunction(const analyse::FunctionInstance &deletedFunc, bool overloaded) override {
-        // TODO: ask how to handle
+        RemoveAction removeAction = RemoveAction("function", helper::retrieveFunctionHeader(deletedFunc));
     }
 
     void outputOverloadedDisclaimer(const analyse::FunctionInstance &func, std::string percentage) override {
@@ -108,18 +110,6 @@ public:
     }
 
     bool printOut() override {
-
-        /* remove all empty functions
-        for (const auto &item: files){
-            vector<JSONFunction> newFunc = vector<JSONFunction>();
-            for (const auto &func: item.second.functions){
-                if(func.replaceActions.size() != 0 || func.removeActions.size() != 0 || func.insertActions.size() != 0){
-                    newFunc.push_back(func);
-                }
-            }
-            files.find(item.first)->second.functions = newFunc;
-        }
-         */
         // remove all empty files
         for(const auto &item : files){
             if(item.second.functions.size() == 0){

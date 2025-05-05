@@ -272,7 +272,7 @@ namespace analyse{
 
     bool Analyser::compareFile(const FunctionInstance& func, const FunctionInstance& newFunc){
         if(func.filename != newFunc.filename) {
-            outputHandler->outputNewFilename(newFunc, func.filename);
+            outputHandler->outputNewFilename(newFunc, func);
             return true;
         }
         return false;

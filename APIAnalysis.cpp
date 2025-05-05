@@ -226,12 +226,12 @@ int main(int argc, const char **argv) {
 
     if(result.count("oldCD")){
         std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
-        oldCD = FixedCompilationDatabase::loadFromFile(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);
+        oldCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);
     }
 
     if(result.count("newCD")){
         std::string errorMessage = "Could not load the specified new compilation Database, trying to find one in the project files\n";
-        newCD = FixedCompilationDatabase::loadFromFile(std::filesystem::canonical(result["newCD"].as<std::string>()).string(), errorMessage);
+        newCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["newCD"].as<std::string>()).string(), errorMessage);
     }
 
     std::string errorMessage="No Compilation database could be found in the old directory, loading the standard empty compilation database";

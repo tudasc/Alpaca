@@ -81,4 +81,16 @@ namespace helper {
         }
         return output;
     }
+
+    std::string getAllParamsInRegularForm(const std::vector<std::pair<std::string, std::string>>& params){
+        std::string output = "(";
+        for (const auto &item: params){
+            output += item.first + " " + item.second + ", ";
+        }
+        return output.substr(0, output.length()-2) + ")";
+    }
+
+    std::string retrieveFunctionHeader(const analyse::FunctionInstance& func){
+        return func.returnType + " " + func.qualifiedName + getAllParamsInRegularForm(func.params);
+    }
 }
