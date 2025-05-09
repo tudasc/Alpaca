@@ -198,11 +198,18 @@ namespace analyse{
         bool output = false;
         unsigned long numberOldParams = func.params.size();
         unsigned long numberNewParams = newFunc.params.size();
+        // TODO: Solve the problem of differentiating between a new param and a changed param when there is a new number of params
         if (numberOldParams == numberNewParams) {
             for (int i=0; i<numberNewParams; i++) {
+                // new type of param -> param change
                 if ((func.params.at(i).first) != (newFunc.params.at(i).first)) {
                     if(!internalUse) outputHandler->outputParamChange(i, func.params.at(i), newFunc);
                     output = true;
+                }
+                // a default value changed
+                else if (func.params.at(i).second.second != newFunc.params.at(i).second.second){
+                    if(!internalUse) outputHandler->outputParamDefaultChange(i, func.params.at(i), newFunc);
+                    // a default change is not propagated to the higher up analysis steps, because it is not significant enough to warrant inclusion
                 }
             }
         }

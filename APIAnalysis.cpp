@@ -64,10 +64,20 @@ public:
 
         unsigned int numParam = functionDecl->getNumParams();
         for(int i=0;i<numParam;i++){
-
             auto paramDecl = functionDecl->getParamDecl(i);
+            std::string defaultParam;
+            if(paramDecl->hasDefaultArg()){
+                //defaultParam = paramDecl->getDefaultArgRange().(Context->getSourceManager());
+                auto start = paramDecl->getDefaultArg()->getBeginLoc(), end = paramDecl->getDefaultArg()->getEndLoc();
+                LangOptions lang;
+                SourceManager *sm = &(Context->getSourceManager());
+                auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+                defaultParam = std::string(sm->getCharacterData(start),
+                                                    sm->getCharacterData(endToken) - sm->getCharacterData(start));
+
+            }
             // TODO: Check if I can / should strip keywords like const or &
-            functionInstance.params.push_back(std::make_pair(paramDecl->getType().getAsString(), paramDecl->getNameAsString()));
+            functionInstance.params.push_back(std::make_pair(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam)));
         }
 
         // gets a vector of all the classes / namespaces a function is part of e.g. simple::example::function() -> [simple, example]

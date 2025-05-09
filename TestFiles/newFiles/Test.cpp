@@ -16,8 +16,8 @@ int itsRenamed(){
     return 0;
 }
 
-void paramChange(bool x){
-    bool z = x;
+void paramChange(bool x, bool z, int w, int p = 20){
+    bool fe = x;
 }
 
 void overloaded(int x, int y){

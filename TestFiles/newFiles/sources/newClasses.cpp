@@ -13,5 +13,5 @@ namespace additionalNamespace
 
 namespace nspace
 {
-    void Func(int i) {}
+    void Func(int i, bool x = true) {}
 }

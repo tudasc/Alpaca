@@ -11,21 +11,25 @@ namespace fs = std::filesystem;
 
 namespace helper {
 
-    std::vector<std::string> acceptableFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx",".cppm"};
+    std::vector<std::string> acceptedFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx",".cppm"};
 
     void listFiles(const std::string &path, std::vector<std::string>* listOfFiles){
         for(const auto& entry : fs::recursive_directory_iterator(path)){
-            if(entry.is_directory() || !(std::find(acceptableFileEndings.begin(), acceptableFileEndings.end(), fs::path(entry.path()).extension()) != acceptableFileEndings.end())){
+            if(entry.is_directory() || !(std::find(acceptedFileEndings.begin(), acceptedFileEndings.end(), fs::path(entry.path()).extension()) != acceptedFileEndings.end())){
                 continue;
             }
             listOfFiles->push_back(fs::canonical(entry.path()));
         }
     }
 
-    std::string getAllParamsAsString(const std::vector<std::pair<std::string, std::string>>& params){
+    std::string getAllParamsAsString(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& params){
         std::string output = "[";
         for (const auto &item: params){
-            output += item.first + " " + item.second + ", ";
+            if(item.second.second != ""){
+                output += item.first + " " + item.second.first + " = " + item.second.second + ", ";
+            }else{
+                output += item.first + " " + item.second.first + ", ";
+            }
         }
         return output.substr(0, output.length()-2) + "]";
     }
@@ -74,7 +78,7 @@ namespace helper {
         return code;
     }
 
-    std::vector<std::string> convertPairIntoFlatVector(std::vector<std::pair<std::string, std::string>> vec){
+    std::vector<std::string> convertPairIntoFlatVector(std::vector<std::pair<std::string, std::pair<std::string, std::string>>> vec){
         std::vector<std::string> output;
         for (const auto &item: vec){
             output.push_back(item.first);
@@ -82,10 +86,14 @@ namespace helper {
         return output;
     }
 
-    std::string getAllParamsInRegularForm(const std::vector<std::pair<std::string, std::string>>& params){
+    std::string getAllParamsInRegularForm(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& params){
         std::string output = "(";
         for (const auto &item: params){
-            output += item.first + " " + item.second + ", ";
+            if(item.second.second != ""){
+                output += item.first + " " + item.second.first + " = " + item.second.second + ", ";
+            }else{
+                output += item.first + " " + item.second.first + ", ";
+            }
         }
         return output.substr(0, output.length()-2) + ")";
     }

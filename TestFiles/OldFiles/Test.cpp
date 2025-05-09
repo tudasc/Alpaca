@@ -28,8 +28,8 @@ int rename(){
     return 0;
 }
 
-void paramChange(int x){
-    int z = x*x;
+void paramChange(int x, bool z, int p = 10){
+    int fe = x*x;
 }
 
 
@@ -65,7 +65,7 @@ class switcher{
 
 namespace nspace
 {
-    void Func(int i) {}
+    void Func(int i, bool x) {}
     void switchedNamespaceTest(){}
     class movingNamespace{
     public:

@@ -14,7 +14,8 @@ namespace analyse{
         std::string name;
         std::string qualifiedName;
         std::string returnType;
-        std::vector<std::pair<std::string, std::string>> params;
+        // [type, [name, default value]]
+        std::vector<std::pair<std::string, std::pair<std::string, std::string>>> params;
         std::string body;
         std::vector<std::string> location;
         std::vector<FunctionInstance> declarations;
@@ -27,7 +28,10 @@ namespace analyse{
             output += "Return Type:   " + returnType;
             output += "\nParams:        ";
             for (const auto &item: params){
-                output += item.first + " " + item.second + " ";
+                output += item.first + " " + item.second.first + " ";
+                if(item.second.second != ""){
+                    output += "= " + item.second.second + " ";
+                }
             }
             output += "\nFull Location: ";
             for (const auto &item: location){

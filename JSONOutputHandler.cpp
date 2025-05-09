@@ -41,19 +41,33 @@ public:
             reference = "";
         }else{
             insertionLocation = "after";
-            reference = newFunc.params.at(position-1).second;
+            reference = newFunc.params.at(position-1).second.first;
         }
-        InsertAction insertAction = InsertAction("parameter", insertionLocation, reference, newFunc.params.at(position).first + " " + newFunc.params.at(position).second, "");
+        InsertAction insertAction = InsertAction("parameter", insertionLocation, reference, newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first, newFunc.params.at(position).second.second);
         currentFunc->insertActions.push_back(insertAction);
     }
 
-    void outputParamChange(int position, std::pair<std::string, std::string> oldParam, const analyse::FunctionInstance &newFunc) override {
+    void outputParamChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance &newFunc) override {
         ReplaceAction replaceAction = ReplaceAction("parameter type", oldParam.first, newFunc.params.at(position).first);
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputDeletedParam(int position, const std::vector<std::pair<std::string, std::string>> &oldParams, const analyse::FunctionInstance &newFunc, int numberOfDeletedParams) override {
-        RemoveAction removeAction = RemoveAction("parameter", oldParams.at(position).second);
+    void outputParamDefaultChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance &newFunc) override {
+        // if the default is now empty and had a value earlier, it constitutes a new param
+        if(newFunc.params.at(position).second.second.empty() && !oldParam.second.second.empty()){
+            outputNewParam(position, newFunc, 1);
+            return;
+        }
+
+        string oldValue = (oldParam.second.second.empty()) ? oldParam.first + " " + oldParam.second.first : oldParam.first + " " + oldParam.second.first + " = " + oldParam.second.second;
+        string newValue = (newFunc.params.at(position).second.second.empty()) ? newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first : newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first + " = " + newFunc.params.at(position).second.second;
+
+        ReplaceAction replaceAction = ReplaceAction("default param value", oldValue, newValue);
+        currentFunc->replaceActions.push_back(replaceAction);
+    }
+
+    void outputDeletedParam(int position, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>> &oldParams, const analyse::FunctionInstance &newFunc, int numberOfDeletedParams) override {
+        RemoveAction removeAction = RemoveAction("parameter", oldParams.at(position).second.first);
         currentFunc->removeActions.push_back(removeAction);
     }
 
@@ -64,7 +78,7 @@ public:
 
     void outputNewScope(const analyse::FunctionInstance &newFunc, std::string oldScope) override {
         if(newFunc.scope == "private"){
-            // handle this like a function deletion
+            // TODO: handle this like a function deletion?
 
         } // otherwise do nothing, as no action makes sense here?
     }
@@ -76,9 +90,10 @@ public:
 
     void outputNewFilename(const analyse::FunctionInstance &newFunc, const analyse::FunctionInstance &oldFunc) override{
         // remove function in file 1
-        RemoveAction removeAction = RemoveAction("function", helper::retrieveFunctionHeader(oldFunc));
-        // insert function in file 2?
+        RemoveAction removeAction = RemoveAction("function definition", helper::retrieveFunctionHeader(oldFunc));
         currentFunc->removeActions.push_back(removeAction);
+        // insert function in file 2?
+
     }
 
     void outputNewDeclPositions(const analyse::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
@@ -90,7 +105,7 @@ public:
     }
 
     void outputDeletedFunction(const analyse::FunctionInstance &deletedFunc, bool overloaded) override {
-        RemoveAction removeAction = RemoveAction("function", helper::retrieveFunctionHeader(deletedFunc));
+        RemoveAction removeAction = RemoveAction("function definition", helper::retrieveFunctionHeader(deletedFunc));
         currentFunc->removeActions.push_back(removeAction);
     }
 

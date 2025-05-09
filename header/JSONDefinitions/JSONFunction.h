@@ -10,16 +10,13 @@
 
 
 struct JSONFunction {
-    // TODO: Visibility?
     std::string name; // insert that this is the old version?
-    std::vector<std::pair<std::string, std::string>> arguments; // insert that this is the old version?
-    // TODO: Maybe insert another layer called action to resemble the example, but seems redundant
+    std::vector<std::pair<std::string, std::pair<std::string, std::string>>> arguments; // insert that this is the old version?
     std::vector<InsertAction> insertActions;
     std::vector<RemoveAction> removeActions;
     std::vector<ReplaceAction> replaceActions;
-    // TODO: Where to put changes in the declarations, another separate vector or as part of the actions?
 
-    JSONFunction(std::string name, std::vector<std::pair<std::string, std::string>> arguments){
+    JSONFunction(std::string name, std::vector<std::pair<std::string, std::pair<std::string, std::string>>> arguments){
         this->name = name;
         this->arguments = arguments;
         this->insertActions = std::vector<InsertAction>();
