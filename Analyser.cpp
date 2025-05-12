@@ -28,6 +28,7 @@ namespace analyse{
     }
 
     void Analyser::compareVersionsWithDoc(bool docEnabled, bool includePrivate) {
+        matcher::getOptimalParamConversion(oldProgram.find("paramChange")->second.params, newProgram.find("paramChange")->second.params);
         for (auto const &x: oldProgram) {
             FunctionInstance func = x.second;
 
@@ -196,67 +197,35 @@ namespace analyse{
 
     bool Analyser::compareParams(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse) {
         bool output = false;
-        unsigned long numberOldParams = func.params.size();
-        unsigned long numberNewParams = newFunc.params.size();
-        // TODO: Solve the problem of differentiating between a new param and a changed param when there is a new number of params
-        if (numberOldParams == numberNewParams) {
-            for (int i=0; i<numberNewParams; i++) {
-                // new type of param -> param change
-                if ((func.params.at(i).first) != (newFunc.params.at(i).first)) {
-                    if(!internalUse) outputHandler->outputParamChange(i, func.params.at(i), newFunc);
-                    output = true;
-                }
-                // a default value changed
-                else if (func.params.at(i).second.second != newFunc.params.at(i).second.second){
-                    if(!internalUse) outputHandler->outputParamDefaultChange(i, func.params.at(i), newFunc);
-                    // a default change is not propagated to the higher up analysis steps, because it is not significant enough to warrant inclusion
-                }
-            }
-        }
-        // a parameter was added
-        else if(numberNewParams > numberOldParams) {
-            // all arguments added breaks the normal algorithm, so it has to be handled separately
-            if(numberOldParams == 0){
-                for(int i=0;i<numberNewParams;i++){
-                    if(!internalUse) outputHandler->outputNewParam(i, newFunc, 1);
-                }
-            }else{
-                int offset = 0;
-                for(int i=0;i<numberNewParams;i++){
-                    // prevents an out of range error
-                    if(i-offset >= numberOldParams){
-                        offset++;
-                    }
-                    if ((func.params.at(i-offset).first) != (newFunc.params.at(i).first)) {
-                        offset++;
-                        if(!internalUse) outputHandler->outputNewParam(i, newFunc, 1);
-                    }
-                }
-            }
-            output = true;
-        }
-        else {
-            // all arguments deleted breaks the normal algorithm, so it has to be handled separately
-            if(numberNewParams == 0){
-                for(int i=0;i<numberNewParams;i++){
-                    if(!internalUse) outputHandler->outputDeletedParam(i, func.params, newFunc, 1);
-                }
-            } else {
-                int offset = 0;
-                // a parameter was deleted
-                for(int i = 0; i < numberOldParams; i++) {
-                    // prevents an out of range error
-                    if(i-offset >= numberNewParams){
-                        offset++;
-                    }
+        vector<matcher::Operation> operations = matcher::getOptimalParamConversion(func.params, newFunc.params);
 
-                    if ((func.params.at(i).first) != (newFunc.params.at(i - offset).first)) {
-                        offset++;
-                        if (!internalUse) outputHandler->outputDeletedParam(i, func.params, newFunc, 1);
-                    }
-                }
+        if(operations.size() != 0){
+            if(internalUse){
+                return true;
             }
             output = true;
+            for (const auto &item: operations){
+                if(item.type == matcher::Operation::Types::REPLACEMENT){
+                    if(item.oldParam.first != item.newParam.first){
+                        outputHandler->outputParamChange(item.positionInOldParam, func, item.newParam);
+                    }else{
+                        // if the types are the same, the change is in the defaults
+                        if(item.newParam.second.second.empty()){
+                            // the default was removed -> TODO: treat as an addition?
+                            outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam);
+                        }else{
+                            // both have a default, that itself changed OR there is a new default
+                            outputHandler->outputParamDefaultChange(item.positionInOldParam, func, item.newParam);
+                        }
+                    }
+                } else if(item.type == matcher::Operation::Types::INSERTION){
+                    outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam);
+                } else if(item.type == matcher::Operation::Types::DELETION){
+                    outputHandler->outputDeletedParam(item.positionInOldParam, func.params);
+                }else{
+                    throw new std::exception;
+                }
+            }
         }
         return output;
     }
@@ -271,7 +240,7 @@ namespace analyse{
 
     bool Analyser::compareScope(const FunctionInstance& func, const FunctionInstance& newFunc){
         if(func.scope != newFunc.scope){
-            outputHandler->outputNewScope(newFunc, func.scope);
+            outputHandler->outputNewScope(newFunc, func);
             return true;
         }
         return false;

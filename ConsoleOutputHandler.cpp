@@ -20,37 +20,34 @@ public:
         output = startingMessage;
     }
 
-    void outputNewParam(int position, const analyse::FunctionInstance& newFunc, int numberOfNewParams) override{
-        output += "There is a new parameter at the position " + to_string(position+1)
-        + ". The complete new parameters are " + helper::getAllParamsAsString(newFunc.params) + "\n";
+    void outputNewParam(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override{
+        output += "There is a new parameter (" + newParam.first + " " + newParam.second.first + ") after the param " + oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first
+                + ". Full old params for reference: " +helper::getAllParamsAsString(oldFunc.params) + "\n";
     }
 
-    void outputParamChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance &newFunc) override {
-        output += "A parameter changed from " + oldParam.first + " " + oldParam.second.first + " to "
-        + newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first+ ". The new complete params are "
-        + helper::getAllParamsAsString(newFunc.params) + "\n";
+    void outputParamChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override {
+        output += "A parameter changed from " + oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first + " to "
+        + newParam.first + " " + newParam.second.first+ " at position " + to_string(oldPosition) + "\n";
     }
 
-    void outputParamDefaultChange(int position, std::pair<std::string, std::pair<std::string, std::string>> oldParam, const analyse::FunctionInstance &newFunc) override {
+    void outputParamDefaultChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override {
 
-        string oldValue = (oldParam.second.second.empty()) ? oldParam.first + " " + oldParam.second.first : oldParam.first + " " + oldParam.second.first + " = " + oldParam.second.second;
-        string newValue = (newFunc.params.at(position).second.second.empty()) ? newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first : newFunc.params.at(position).first + " " + newFunc.params.at(position).second.first + " = " + newFunc.params.at(position).second.second;
+        string oldValue = (oldFunc.params.at(oldPosition).second.second.empty()) ? oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first : oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first + " = " + oldFunc.params.at(oldPosition).second.second;
+        string newValue = (newParam.second.second.empty()) ? newParam.first + " " + newParam.second.first : newParam.first + " " + newParam.second.first + " = " + newParam.second.second;
 
-        output += "A default value of the param " + oldValue + " changed to " + newValue
-                + ". The new complete params are " + helper::getAllParamsAsString(newFunc.params) + "\n";
+        output += "A default value of the param " + oldValue + " changed to " + newValue + "\n";
     }
 
-    void outputDeletedParam(int position, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>> &oldParams, const analyse::FunctionInstance &newFunc, int numberOfDeletedParams) override {
-        output += "The parameter " + oldParams.at(position).first + " " + oldParams.at(position).second.first + " was deleted. The new complete parameters are "
-                + helper::getAllParamsAsString(newFunc.params) + "\n";
+    void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams) override {
+        output += "The parameter " + oldParams.at(oldPosition).first + " " + oldParams.at(oldPosition).second.first + " was deleted\n";
      }
 
      void outputNewReturn(const analyse::FunctionInstance &newFunc, std::string oldReturn) override {
         output += "The return type changed from " + oldReturn + " to " + newFunc.returnType + "\n";
     }
 
-    void outputNewScope(const analyse::FunctionInstance &newFunc, std::string oldScope) override {
-        output += "The scope changed from " + oldScope + " to " + newFunc.scope + "\n";
+    void outputNewScope(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) override {
+        output += "The scope changed from " + oldFunc.scope + " to " + newFunc.scope + "\n";
     }
 
     void outputNewNamespaces(const analyse::FunctionInstance &newFunc, const analyse::FunctionInstance& oldFunc) override {
