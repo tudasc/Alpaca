@@ -41,10 +41,10 @@ std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendAc
 
 
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
-    std::multimap<std::string, FunctionInstance>* program;
+    std::vector<FunctionInstance>* program;
     std::string dir;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program, std::string directory) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory) : Context(Context){
         this->program = program;
         this->dir = directory;
     }
@@ -118,7 +118,7 @@ public:
             functionInstance.scope = getAccessSpelling(functionDecl->getAccess());
         }
 
-        program->insert(std::make_pair(functionInstance.qualifiedName, functionInstance));
+        program->push_back(functionInstance);
         return true;
     };
 
@@ -129,7 +129,7 @@ private:
 
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::multimap<std::string, FunctionInstance>* program, std::string dir) : apiAnalysisVisitor(Context, program, dir){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir) : apiAnalysisVisitor(Context, program, dir){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -141,10 +141,10 @@ private:
 
 
 class APIAnalysisAction : public clang::ASTFrontendAction {
-    std::multimap<std::string, FunctionInstance>* p;
+    std::vector<FunctionInstance>* p;
     std::string directory;
 public:
-    explicit APIAnalysisAction(std::multimap<std::string, FunctionInstance>* program, std::string dir){
+    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir){
         this->p=program;
         this->directory = dir;
     };
@@ -156,30 +156,33 @@ public:
 private:
 };
 
-void assignDeclarations(std::multimap<std::string, FunctionInstance>& functions){
+std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& functions){
+    std::vector<FunctionInstance> output;
     for (auto &item: functions){
-        if(item.second.isDeclaration){
+        if(item.isDeclaration){
             continue;
         }
         // find all instances of this particular qualified name
-        for (auto[it, end] = functions.equal_range(item.first); it != end; it++)
+        for (auto &otherItem : functions)
         {
+            if(otherItem.qualifiedName == item.qualifiedName){
+                continue;
+            }
             // if the current is a matching declaration, it is added to the FunctionItem item
-            if(item.second.isCorrectDeclaration(it->second)){
-                item.second.declarations.push_back(it->second);
+            if(item.isCorrectDeclaration(otherItem)){
+                item.declarations.push_back(otherItem);
             }
         }
     }
 
     // delete all the declarations from the list
-    for (std::multimap<std::string, FunctionInstance>::iterator iter = functions.begin(); iter != functions.end();)
+    for (int i=0;i<functions.size();i++)
     {
-        std::multimap<std::string, FunctionInstance>::iterator erase_iter = iter++;
+        // adds definitions to the output
+        if (!functions.at(i).isDeclaration) output.push_back(functions.at(i));
 
-        // removes the function if it is a declaration
-        if (erase_iter->second.isDeclaration)
-            functions.erase(erase_iter);
     }
+    return output;
 }
 
 int main(int argc, const char **argv) {
@@ -228,8 +231,8 @@ int main(int argc, const char **argv) {
 
     bool jsonOutput = result["json"].as<bool>();
 
-    std::multimap<std::string, FunctionInstance> oldProgram;
-    std::multimap<std::string, FunctionInstance> newProgram;
+    std::vector<FunctionInstance> oldProgram;
+    std::vector<FunctionInstance> newProgram;
 
     std::unique_ptr<CompilationDatabase> oldCD;
     std::unique_ptr<CompilationDatabase> newCD;
@@ -299,8 +302,8 @@ int main(int argc, const char **argv) {
     }
     newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).get());
 
-    assignDeclarations(oldProgram);
-    assignDeclarations(newProgram);
+    oldProgram = assignDeclarations(oldProgram);
+    newProgram = assignDeclarations(newProgram);
 
     // Analysing
     Analyser analyser = Analyser(oldProgram, newProgram, jsonOutput);
