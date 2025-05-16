@@ -27,7 +27,7 @@ namespace analyse{
         }
     }
 
-    int findFunction(const std::vector<FunctionInstance>& set, std::string qualifiedName){
+    int findFunction(const std::vector<FunctionInstance>& set, const std::string& qualifiedName){
         for(int i=0;i<set.size();i++){
             if(set.at(i).qualifiedName == qualifiedName){
                 return i;
@@ -36,7 +36,7 @@ namespace analyse{
         return -1;
     }
 
-    int countFunctions(const std::vector<FunctionInstance>& set, std::string qualifiedName){
+    int countFunctions(const std::vector<FunctionInstance>& set, const std::string& qualifiedName){
         int counter=0;
         for(const auto & i : set){
             if(i.qualifiedName == qualifiedName){
@@ -71,7 +71,6 @@ namespace analyse{
                 if (bodyStatus.first.empty()){
                     outputHandler->outputDeletedFunction(func, false);
                 } else {
-                    outs()<<findFunction(newProgram, bodyStatus.first)<<"\n";
                     // use the function found during the statistical analysis
                     FunctionInstance newFunc = newProgram.at(findFunction(newProgram, bodyStatus.first));
                     if(newFunc.name != func.name){
@@ -176,7 +175,6 @@ namespace analyse{
         std::vector<FunctionInstance> oldOverloadedInstances;
 
         bool matchFound=false;
-        // TODO convert to while
         int i = 0;
         while(i<oldProgram.size()) {
             matchFound = false;
@@ -189,7 +187,7 @@ namespace analyse{
                 }
 
                 // function header is an exact match
-                // TODO: how to handle the scenario that multiple files and namespaces have functions with the same name?
+                // TODO: how to handle the scenario that multiple files and namespaces have functions with the same name? --> i.e. maybe do ALL the analysis checks instead of just compare params
                 if(oldProgram.at(i).name == func.name && oldProgram.at(i).name == newProgram.at(j).name && !compareParams(oldProgram.at(i), newProgram.at(j), true)) {
                     outputHandler->initialiseFunctionInstance(func);
                     // proceed normally
@@ -214,9 +212,13 @@ namespace analyse{
             }
         }
 
-        for (auto & item : oldProgram){
-            if(func.name == item.name){
-                oldOverloadedInstances.push_back(item);
+        i = 0;
+        while(i<oldProgram.size()) {
+            if(func.name == oldProgram.at(i).name){
+                oldOverloadedInstances.push_back(oldProgram.at(i));
+                oldProgram.erase(oldProgram.begin() + i);
+            }else {
+                i++;
             }
         }
         for (const auto &item: oldOverloadedInstances){

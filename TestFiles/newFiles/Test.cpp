@@ -29,6 +29,10 @@ void overloaded(int x, int y, int z){
 
 }
 
+int overloaded(int w, bool z, int y, bool i){
+    int b = w + z + y + i;
+    return b;
+}
 
 namespace nspace
 {
