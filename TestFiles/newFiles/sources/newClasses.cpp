@@ -10,8 +10,3 @@ namespace additionalNamespace
 {
     void switchedNamespaceTest(){}
 }
-
-namespace nspace
-{
-    void Func(int i, bool x = true) {}
-}

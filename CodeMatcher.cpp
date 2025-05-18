@@ -37,6 +37,10 @@ namespace matcher{
     double compareFunctionBodies(const analyse::FunctionInstance& oldFunc, const analyse::FunctionInstance& newFunc) {
         auto strippedNewCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body));
         auto strippedOldCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body));
+        // TODO: reevaluate
+        if(strippedNewCode == "{}" || strippedOldCode == "{}"){
+            return 0;
+        }
         double distance = matcher::levenshteinDistance(convertStringToVector(strippedOldCode),
                                                                         convertStringToVector(strippedNewCode))[strippedOldCode.length()][strippedNewCode.length()];
         double sum = strippedOldCode.length() + strippedNewCode.length();

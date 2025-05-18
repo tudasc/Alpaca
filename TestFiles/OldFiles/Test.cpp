@@ -70,7 +70,10 @@ class switcher{
 
 namespace nspace
 {
-    void Func(int i, bool x) {}
+    void Func(int i, bool x) {
+        int b = i + b;
+        int v = b + i;
+    }
     void switchedNamespaceTest(){}
     class movingNamespace{
     public:

@@ -37,7 +37,9 @@ int overloaded(int w, bool z, int y, bool i){
 namespace nspace
 {
     class test{
-        void Func(int i) {}
+        void Func(int i) {
+            int b = i + b;
+            int v = b + i;}
     };
 }
 

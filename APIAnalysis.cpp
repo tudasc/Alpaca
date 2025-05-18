@@ -173,6 +173,10 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
                 item.declarations.push_back(otherItem);
             }
         }
+        // if not a single declaration was found, the definition acts as a declaration TODO: should this always be done?
+        if(item.declarations.empty()){
+            item.declarations.push_back(item);
+        }
     }
 
     // delete all the declarations from the list
