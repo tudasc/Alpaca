@@ -21,8 +21,14 @@ public:
     }
 
     void outputNewParam(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override{
-        output += "There is a new parameter (" + newParam.first + " " + newParam.second.first + ") after the param " + oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first
-                + ". Full old params for reference: " +helper::getAllParamsAsString(oldFunc.params) + "\n";
+        if(oldPosition != 0) {
+            output +=
+                    "There is a new parameter (" + newParam.first + " " + newParam.second.first + ") after the param " +
+                    oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first
+                    + ". Full old params for reference: " + helper::getAllParamsAsString(oldFunc.params) + "\n";
+        }else {
+            output += "There is a new parameter (" + newParam.first + " " + newParam.second.first + ")\n";
+        }
     }
 
     void outputParamChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override {
@@ -85,6 +91,14 @@ public:
                   "\" with a code similarity of " + percentage + "%\n";
     }
 
+    void outputStorageClassChange(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) override{
+        output += "The functions storage class changed from " + oldFunc.storageClass + " to " + newFunc.storageClass + "\n";
+    }
+
+    void outputFunctionSpecifierChange(const analyse::FunctionInstance& newFunc, const analyse::FunctionInstance& oldFunc) override{
+        output += "The function specifier changed from " + oldFunc.memberFunctionSpecifier + " to " + oldFunc.memberFunctionSpecifier + "\n";
+    }
+
     bool printOut() override {
         llvm::outs()<<completeOutput;
         return true;
@@ -99,6 +113,6 @@ public:
         return false;
     }
 
-    virtual ~ConsoleOutputHandler(){}
+    virtual ~ConsoleOutputHandler()= default;
 
 };

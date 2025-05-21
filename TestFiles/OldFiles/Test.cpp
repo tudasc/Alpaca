@@ -22,13 +22,13 @@ int removed(){
     return 0;
 }
 
-int rename(){
+static int rename(){
     int test = 0;
     int random = 4;
     return 0;
 }
 
-void paramChange(int x, bool z, int p = 10){
+extern const void paramChange(int x, bool z, int p = 10){
     int fe = x*x;
 }
 
@@ -51,19 +51,23 @@ int overloaded(int w, bool z, bool y){
     return b;
 }
 
+static int secTest(){return 11;}
+
 class test {
 public:
-    void somethingPublic(){
+    void somethingPublic() {
         int i = 10;
     }
-private:
+protected:
     void somethingPrivate(){
         int x = 10;
     }
+    virtual void virtualFunc();
+
 };
 class switcher{
     public:
-        bool switchFileButNotClass(int x, int z, int j){
+        bool switchFileButNotClass (int x, int z, int j) const{
             return true;
         }
 };
@@ -74,7 +78,9 @@ namespace nspace
         int b = i + b;
         int v = b + i;
     }
-    void switchedNamespaceTest(){}
+    void switchedNamespaceTest(){
+                int x = 10+10;
+    }
     class movingNamespace{
     public:
         int moveNamespace() {return 0;}

@@ -59,6 +59,26 @@ public:
 
         functionInstance.name = functionDecl->getNameAsString();
         functionInstance.returnType = functionDecl->getDeclaredReturnType().getAsString();
+        // TODO: handle const
+        // check if extern
+        if(functionDecl->getStorageClass() == clang::StorageClass::SC_Extern){
+            functionInstance.storageClass = "extern";
+        }
+        // check if static
+        else if(functionDecl->getStorageClass() == clang::StorageClass::SC_Static){
+            functionInstance.storageClass = "static";
+        }
+        else if(functionDecl->getStorageClass() == clang::StorageClass::SC_PrivateExtern){
+            functionInstance.storageClass = "private extern";
+        }
+
+        if(functionDecl->isVirtualAsWritten() && functionDecl->isPure()){
+            functionInstance.memberFunctionSpecifier = "pure virtual";
+        }else if(functionDecl->isVirtualAsWritten()){
+            functionInstance.memberFunctionSpecifier = "virtual";
+        }else if(functionDecl->isPure()){
+            functionInstance.memberFunctionSpecifier = "pure";
+        }
 
         unsigned int numParam = functionDecl->getNumParams();
         for(int i=0;i<numParam;i++){
@@ -74,7 +94,6 @@ public:
                                                     sm->getCharacterData(endToken) - sm->getCharacterData(start));
 
             }
-            // TODO: Check if I can / should strip keywords like const or &
             functionInstance.params.push_back(std::make_pair(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam)));
         }
 
@@ -158,6 +177,7 @@ private:
 
 std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& functions){
     std::vector<FunctionInstance> output;
+    std::vector<FunctionInstance> usedDeclarations;
     for (auto &item: functions){
         if(item.isDeclaration){
             continue;
@@ -165,27 +185,28 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
         // find all instances of this particular qualified name
         for (auto &otherItem : functions)
         {
-            if(otherItem.qualifiedName == item.qualifiedName){
+            if(otherItem.qualifiedName != item.qualifiedName){
                 continue;
             }
             // if the current is a matching declaration, it is added to the FunctionItem item
             if(item.isCorrectDeclaration(otherItem)){
                 item.declarations.push_back(otherItem);
+                usedDeclarations.push_back(otherItem);
             }
         }
         // if not a single declaration was found, the definition acts as a declaration TODO: should this always be done?
-        if(item.declarations.empty()){
+        //if(item.declarations.empty()){
             item.declarations.push_back(item);
-        }
+        //}
     }
 
     // delete all the declarations from the list
     for (int i=0;i<functions.size();i++)
     {
         // adds definitions to the output
-        if (!functions.at(i).isDeclaration) output.push_back(functions.at(i));
-
+        if (!(functions.at(i).isDeclaration && std::find_if(usedDeclarations.begin(), usedDeclarations.end(),[functions, i](const FunctionInstance& func){return functions.at(i).qualifiedName == func.qualifiedName;})!=usedDeclarations.end())) output.push_back(functions.at(i));
     }
+
     return output;
 }
 
