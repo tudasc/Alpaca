@@ -118,8 +118,14 @@ public:
     }
 
     void outputDeletedFunction(const analyse::FunctionInstance &deletedFunc, bool overloaded) override {
-        RemoveAction removeAction = RemoveAction("function definition", helper::retrieveFunctionHeader(deletedFunc));
-        currentFunc->removeActions.push_back(removeAction);
+        if(deletedFunc.isDeclaration){
+            RemoveAction removeAction = RemoveAction("function declaration", helper::retrieveFunctionHeader(deletedFunc));
+            currentFunc->removeActions.push_back(removeAction);
+        }else {
+            RemoveAction removeAction = RemoveAction("function definition",
+                                                     helper::retrieveFunctionHeader(deletedFunc));
+            currentFunc->removeActions.push_back(removeAction);
+        }
     }
 
     void outputOverloadedDisclaimer(const analyse::FunctionInstance &func, std::string percentage) override {

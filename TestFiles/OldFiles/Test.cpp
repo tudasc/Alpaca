@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include "headers/Test.h"
+#include "headers/Header1.h"
+#include "headers/Header2.h"
 void differentNumberParams(){
     int i=0;
     i=i+10;
@@ -8,12 +9,13 @@ void differentNumberParams(){
 int newReturn(bool* one, int two) {
     two += 10;
     //random comment
-    // something something // hallo // was // passiert // hier /*
+    // something something // hello //*
     *one = false;
     /*
      gigantischer Code Abschnitt
-     meine
-     Freund
+
+
+
      */
     return two;
 }
@@ -28,7 +30,7 @@ static int rename(){
     return 0;
 }
 
-extern const void paramChange(int x, bool z, int p = 10){
+extern const void paramChange(int x, bool z, int p){
     int fe = x*x;
 }
 
@@ -53,38 +55,32 @@ int overloaded(int w, bool z, bool y){
 
 static int secTest(){return 11;}
 
-class test {
-public:
-    void somethingPublic() {
-        int i = 10;
-    }
-protected:
-    void somethingPrivate(){
-        int x = 10;
-    }
-    virtual void virtualFunc();
+void test::somethingPublic() {
+    int i = 10;
+}
 
-};
-class switcher{
-    public:
-        bool switchFileButNotClass (int x, int z, int j) const{
-            return true;
-        }
-};
+void test::somethingPrivate(){
+    int x = 10;
+}
+
+bool switcher::switchFileButNotClass (int x, int z, int j) const{
+    return true;
+}
+
+double switchHeaderFile(int a){
+    return 0.0;
+}
 
 namespace nspace
 {
-    void Func(int i, bool x) {
+    void moveIntoClass(int i, bool x) {
         int b = i + b;
         int v = b + i;
     }
     void switchedNamespaceTest(){
                 int x = 10+10;
     }
-    class movingNamespace{
-    public:
-        int moveNamespace() {return 0;}
-    };
+    int movingNamespace::moveNamespace() {return 0;}
 }
 
 int main() {

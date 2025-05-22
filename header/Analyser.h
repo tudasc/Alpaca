@@ -69,8 +69,25 @@ namespace analyse{
 
             // check if the rest of the functions match (qualified name check includes the location check)
             return (decl.qualifiedName == qualifiedName && decl.returnType == returnType && decl.scope == scope &&
-                    storageClass == storageClass);
+                    storageClass == decl.storageClass);
         }
+
+        [[nodiscard]] bool equals(FunctionInstance func) const{
+            // check if the params match
+            if (params.size() == func.params.size()) {
+                for (int i = 0; i < params.size(); ++i) {
+                    if (params.at(i) != func.params.at(i)) {
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+
+            return (func.qualifiedName == qualifiedName && func.returnType == returnType && func.scope == scope &&
+                    storageClass == func.storageClass && isDeclaration == func.isDeclaration && memberFunctionSpecifier == func.memberFunctionSpecifier);
+        }
+
     };
 
     class Analyser{

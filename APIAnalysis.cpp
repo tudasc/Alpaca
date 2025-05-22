@@ -194,17 +194,20 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
                 usedDeclarations.push_back(otherItem);
             }
         }
-        // if not a single declaration was found, the definition acts as a declaration TODO: should this always be done?
-        //if(item.declarations.empty()){
-            item.declarations.push_back(item);
-        //}
+        item.declarations.push_back(item);
     }
 
     // delete all the declarations from the list
     for (int i=0;i<functions.size();i++)
     {
         // adds definitions to the output
-        if (!(functions.at(i).isDeclaration && std::find_if(usedDeclarations.begin(), usedDeclarations.end(),[functions, i](const FunctionInstance& func){return functions.at(i).qualifiedName == func.qualifiedName;})!=usedDeclarations.end())) output.push_back(functions.at(i));
+        if (!(functions.at(i).isDeclaration && std::find_if(usedDeclarations.begin(), usedDeclarations.end(),[functions, i](const FunctionInstance& func){return functions.at(i).qualifiedName == func.qualifiedName;})!=usedDeclarations.end())) {
+            // any declaration that is still included has no definition and therefore should also reference itself in the declaration vector (to minimize border case handling the analyser)
+            if(functions.at(i).isDeclaration){
+                functions.at(i).declarations.push_back(functions.at(i));
+            }
+            output.push_back(functions.at(i));
+        }
     }
 
     return output;
