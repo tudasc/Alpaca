@@ -9,7 +9,6 @@
 #include "header/JSONDefinitions/ReplaceAction.h"
 #include "header/HelperFunctions.h"
 #include "include/json.hpp"
-#include <llvm/Support/CommandLine.h>
 
 using namespace std;
 using namespace customJSON;
@@ -17,7 +16,7 @@ using namespace customJSON;
 class JSONOutputHandler : public OutputHandler {
 public:
     std::map<string, JSONFile> files;
-    JSONFunction* currentFunc;
+    JSONFunction* currentFunc{};
     std::string currentFile;
 
     JSONOutputHandler(){
@@ -33,7 +32,7 @@ public:
         currentFile = func.filename;
     }
 
-    void outputNewParam(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override{
+    void outputNewParam(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analyse::FunctionInstance& newFunc) override{
         std::string insertionLocation;
         std::string reference;
         if(oldPosition == 0){
@@ -47,15 +46,15 @@ public:
         currentFunc->insertActions.push_back(insertAction);
     }
 
-    void outputParamChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override {
+    void outputParamChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analyse::FunctionInstance& newFunc) override {
         ReplaceAction replaceAction = ReplaceAction("parameter type", oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first, newParam.first + " " + newParam.second.first);
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputParamDefaultChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam) override {
+    void outputParamDefaultChange(int oldPosition, const analyse::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analyse::FunctionInstance& newFunc) override {
         // if the default is now empty and had a value earlier, it constitutes a new param
         if(newParam.second.second.empty() && !oldFunc.params.at(oldPosition).second.second.empty()){
-            outputNewParam(oldPosition, oldFunc, newParam);
+            outputNewParam(oldPosition, oldFunc, newParam, newFunc);
             return;
         }
 
@@ -66,7 +65,7 @@ public:
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams) override {
+    void outputDeletedParam(int oldPosition, const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& oldParams, const FunctionInstance& newFunc) override {
         RemoveAction removeAction = RemoveAction("parameter", oldParams.at(oldPosition).second.first);
         currentFunc->removeActions.push_back(removeAction);
     }
