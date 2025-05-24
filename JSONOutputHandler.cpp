@@ -166,6 +166,10 @@ public:
 
     // Variables
 
+    void outputVariableDeleted(const variableanalysis::VariableInstance& var) override{
+
+    }
+
     void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
 
     }

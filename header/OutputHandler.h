@@ -49,6 +49,8 @@ public:
     // VARIABLES
     virtual void initialiseVariableInstance(const variableanalysis::VariableInstance& var) = 0;
 
+    virtual void outputVariableDeleted(const variableanalysis::VariableInstance& var) = 0;
+
     virtual void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
 
     virtual void outputVariableTypeChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) = 0;
