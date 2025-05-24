@@ -108,6 +108,14 @@ public:
         output += "The function specifier changed from " + oldFunc.memberFunctionSpecifier + " to " + newFunc.memberFunctionSpecifier + "\n";
     }
 
+    void outputFunctionConstChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) override{
+        if(oldFunc.isConst){
+            output += "The function is not declared const anymore\n";
+        }else{
+            output += "The function is now declared const\n";
+        }
+    }
+
     bool endOfCurrentFunction() override{
         if(output != startingMessage){
             output += "\n";

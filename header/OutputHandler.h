@@ -42,6 +42,8 @@ public:
 
     virtual void outputFunctionSpecifierChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
 
+    virtual void outputFunctionConstChange(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) = 0;
+
     virtual bool printOut() = 0;
 
     virtual bool endOfCurrentFunction() = 0;
