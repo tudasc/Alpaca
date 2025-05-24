@@ -34,7 +34,7 @@ namespace matcher{
 
 
 
-    double compareFunctionBodies(const analyse::FunctionInstance& oldFunc, const analyse::FunctionInstance& newFunc) {
+    double compareFunctionBodies(const analysis::FunctionInstance& oldFunc, const analysis::FunctionInstance& newFunc) {
         auto strippedNewCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body));
         auto strippedOldCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body));
         // TODO: reevaluate

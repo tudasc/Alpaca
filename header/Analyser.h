@@ -6,10 +6,9 @@
 #include <clang/AST/RecursiveASTVisitor.h>
 #include "../include/json.hpp"
 
-using json = nlohmann::json;
-
-namespace analyse{
-    struct FunctionInstance {
+namespace analysis{
+    class FunctionInstance {
+    public:
         bool isDeclaration;
         std::string name;
         std::string qualifiedName;
@@ -23,6 +22,7 @@ namespace analyse{
         std::string scope;
         std::string storageClass;
         std::string memberFunctionSpecifier;
+        bool isConst;
         std::string getAsString(){
             std::string output;
             output += "\n-----------------" + name + "-----------------\n";
@@ -87,33 +87,6 @@ namespace analyse{
             return (func.qualifiedName == qualifiedName && func.returnType == returnType && func.scope == scope &&
                     storageClass == func.storageClass && isDeclaration == func.isDeclaration && memberFunctionSpecifier == func.memberFunctionSpecifier);
         }
-
-    };
-
-    class Analyser{
-
-        public:
-            void compareVersionsWithDoc(bool docEnabled, bool includePrivate);
-            Analyser( const std::vector<FunctionInstance>& oldProgram, const std::vector<FunctionInstance>& newProgram, bool JSONOutput);
-
-        private:
-            std::pair<std::string, double> findBody(const FunctionInstance& oldBody, bool docEnabled);
-            bool compareOverloadedFunctionHeader(const FunctionInstance& func);
-            static bool compareFunctionHeader(const FunctionInstance&, const FunctionInstance&, bool internalUse);
-            static bool compareFunctionHeaderExceptParams(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static std::pair<FunctionInstance, double>findBody(const FunctionInstance& oldFunc, const std::vector<FunctionInstance>& funcSubset);
-            static bool compareParams(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareReturnType(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareScope(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareFile(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareNamespaces(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareDeclarations(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareStorageClass(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-            static bool compareFunctionSpecifier(const FunctionInstance& func, const FunctionInstance& newFunc, bool internalUse);
-
-
-            std::vector<FunctionInstance> oldProgram;
-        std::vector<FunctionInstance> newProgram;
 
     };
 }

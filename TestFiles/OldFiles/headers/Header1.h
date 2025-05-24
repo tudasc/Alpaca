@@ -2,6 +2,10 @@
 
 void differentNumberParams();
 
+struct testStruct{
+    int lk = 457;
+};
+
 int newReturn(bool* one, int two);
 
 int removed();
@@ -31,8 +35,9 @@ protected:
 
 };
 class switcher{
-    public:
-        bool switchFileButNotClass (int x, int z, int j) const;
+    int classVar=10;
+public:
+    bool switchFileButNotClass (int x, int z, int j) const;
 };
 
 namespace nspace
