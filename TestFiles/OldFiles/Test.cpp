@@ -74,6 +74,8 @@ double switchHeaderFile(int a){
     return 0.0;
 }
 
+int switcher::declarationFileChange = 200;
+
 namespace nspace
 {
     const inline extern unsigned int namespaceVariable = 200;

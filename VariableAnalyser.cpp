@@ -31,7 +31,9 @@ namespace variableanalysis {
                 if(indexInNew != -1){
                     VariableInstance newVar = newVariables.at(indexInNew);
                     compareMainHeader(oldVar, newVar);
+                    compareLocation(oldVar, newVar);
                     compareQualifiers(oldVar, newVar);
+                    compareDefinitions(oldVar, newVar);
                 }else{
                     outputHandler->outputVariableDeleted(oldVar);
                 }
@@ -58,6 +60,19 @@ namespace variableanalysis {
             }
         }
 
+        void compareLocation(const VariableInstance& oldVar, const VariableInstance& newVar){
+            if(oldVar.location.size() != newVar.location.size()){
+                outputHandler->outputVariableLocationChange(oldVar, newVar);
+            }else{
+                 for(int i=0;i<oldVar.location.size();i++){
+                    if(oldVar.location.at(i) != newVar.location.at(i)){
+                        outputHandler->outputVariableLocationChange(oldVar, newVar);
+                        break;
+                    }
+                }
+            }
+        }
+
         void compareQualifiers(const VariableInstance& oldVar, const VariableInstance& newVar){
         // processed in detail, in case there is more complicated logic introduced in the future
             if(oldVar.isInline != newVar.isInline){
@@ -77,6 +92,35 @@ namespace variableanalysis {
             }
             if(oldVar.isMutable != newVar.isMutable){
                 outputHandler->outputVariableMutableChange(oldVar, newVar);
+            }
+        }
+
+        void compareDefinitions(const VariableInstance& oldVar, const VariableInstance& newVar){
+            // TODO: Should the found definitions be compared as well?
+            for (const auto &oldDef: oldVar.definitions){
+                bool found = false;
+                for (const auto &newDef: newVar.definitions){
+                    if(oldDef.filename == newDef.filename){
+                        found = true;
+                        if(oldDef.defaultValue != newDef.defaultValue){
+                            outputHandler->outputVariableDefaultValueChange(oldDef, newDef);
+                        }
+                    }
+                }
+                if(!found){
+                    outputHandler->outputVariableDefinitionDeleted(oldDef);
+                }
+            }
+            for (const auto &newDef: newVar.definitions){
+                bool found = false;
+                for (const auto &oldDef: oldVar.definitions){
+                    if(oldDef.filename == newDef.filename){
+                        found = true;
+                    }
+                }
+                if(!found){
+                    outputHandler->outputVariableDefinitionAdded(newDef);
+                }
             }
         }
 

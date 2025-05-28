@@ -2,10 +2,6 @@
 
 void differentNumberParams();
 
-struct testStruct{
-    int lk = 457;
-};
-
 int newReturn(bool* one, int two);
 
 int removed();
@@ -27,6 +23,11 @@ int overloaded(int w, bool z, bool y);
 static int secTest();
 
 class test {
+    int newType;
+    int newClass;
+    int newScope;
+    int newDefinition;
+    int newConst = 10;
 public:
     void somethingPublic();
 protected:
@@ -34,20 +35,26 @@ protected:
     virtual void virtualFunc();
 
 };
+
 class switcher{
-    int classVar=10;
+    static int declarationFileChange;
 public:
     bool switchFileButNotClass (int x, int z, int j) const;
 };
 
-namespace nspace
-{
+namespace nspace {
     void moveIntoClass(int i, bool x);
+    int static switchingFromStatic = 10;
+    int extern switchingToStatic;
     void switchedNamespaceTest();
-    class movingNamespace{
+
+    class movingNamespace {
     public:
         int moveNamespace();
     };
 }
+struct testStruct{
+    int deleted = 10;
+};
 
 
