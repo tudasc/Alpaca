@@ -27,7 +27,7 @@ namespace nspace
 
 class switcher{
     int newClass;
-    static int declarationFileChange;
+    static int definitionFileChange;
 public:
     bool switchFileButNotClass (int x, int z, int j) const;
 };
@@ -45,6 +45,7 @@ private:
 };
 
 namespace newNspace{
+    int sameName;
     void switchedNamespaceTest();
     class movingNamespace{
     public:

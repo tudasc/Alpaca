@@ -37,12 +37,13 @@ protected:
 };
 
 class switcher{
-    static int declarationFileChange;
+    static int definitionFileChange;
 public:
     bool switchFileButNotClass (int x, int z, int j) const;
 };
 
 namespace nspace {
+    int sameName;
     void moveIntoClass(int i, bool x);
     int static switchingFromStatic = 10;
     int extern switchingToStatic;

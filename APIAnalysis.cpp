@@ -440,7 +440,7 @@ std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<v
         // adds definitions to the output
         if (!(variables.at(i).isDefinition && std::find_if(usedDefinitions.begin(), usedDefinitions.end(),[variables, i](const variableanalysis::VariableInstance& var){return variables.at(i).qualifiedName == var.qualifiedName;})!=usedDefinitions.end())) {
             if(variables.at(i).isDefinition){
-                variables.at(i).definitions.push_back(variables.at(i));
+                //variables.at(i).definitions.push_back(variables.at(i));
             }
             output.push_back(variables.at(i));
         }

@@ -64,6 +64,7 @@ void test::virtualFunc() {
 }
 
 namespace newNspace{
+    const inline extern unsigned int namespaceVariable = 200;
     void switchedNamespaceTest(){
         int x = 10+10;
     }
