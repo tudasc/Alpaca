@@ -142,8 +142,7 @@ namespace analysis{
                 if (docEnabled) {
                     double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
 
-                    // prioritize functions that have the exact same name and header
-                    // TODO: ask to make sure this is the correct way to handle this
+                    // prioritize functions that have the exact same name
                     if (oldFunc.name == newFunc.name && percentageDifference >= percentageCutOff) {
                         return std::make_pair(newFunc.qualifiedName, percentageDifference);
                     }
@@ -319,7 +318,6 @@ namespace analysis{
                         } else {
                             // if the types are the same, the change is in the defaults
                             if (item.newParam.second.second.empty()) {
-                                // the default was removed -> TODO: treat as an addition?
                                 outputHandler->outputNewParam(item.positionInOldParam, func, item.newParam, newFunc);
                             } else {
                                 // both have a default, that itself changed OR there is a new default

@@ -22,6 +22,7 @@ namespace analysis{
         std::string scope;
         std::string storageClass;
         std::string memberFunctionSpecifier;
+        std::string fullHeader;
         bool isConst;
         std::string getAsString(){
             std::string output;

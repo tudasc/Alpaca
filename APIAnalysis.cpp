@@ -155,6 +155,13 @@ public:
             functionInstance.scope = getAccessSpelling(functionDecl->getAccess());
         }
 
+        SourceManager &sourceManager = functionDecl->getASTContext().getSourceManager();
+        SourceRange sourceRange = functionDecl->getSourceRange();
+        auto entireHeader = Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceManager, LangOptions(), 0);
+        entireHeader = entireHeader.substr(0, entireHeader.find("{"));
+
+        functionInstance.fullHeader = entireHeader;
+
         program->push_back(functionInstance);
         return true;
     };
