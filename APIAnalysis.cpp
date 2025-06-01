@@ -9,8 +9,8 @@
 #include "include/cxxopts.hpp"
 
 #include "header/HelperFunctions.h"
-#include "header/Analyser.h"
-#include "Analyser.cpp"
+#include "header/FunctionAnalyser.h"
+#include "FunctionAnalyser.cpp"
 #include "header/VariableAnalyser.h"
 #include "VariableAnalyser.cpp"
 #include "ConsoleOutputHandler.cpp"
@@ -22,7 +22,7 @@ using namespace clang;
 using namespace clang::tooling;
 using namespace clang;
 using namespace helper;
-using namespace analysis;
+using namespace functionanalysis;
 
 template<typename T, class... Args>
 std::unique_ptr<clang::tooling::FrontendActionFactory> argumentParsingFrontendActionFactory(Args... args){
@@ -461,7 +461,7 @@ int main(int argc, const char **argv) {
     options.add_options()
             ("doc, deep-overload-comparison", "Enables the statistical comparison of function bodies")
             ("ipf,include-private-functions", "Include private functions in the output")
-            ("json,output-JSON", "Output the analysis in a custom JSON format")
+            ("json,output-JSON", "Output the functionanalysis in a custom JSON format")
             ("newDir, newDirectory", "Path to the newer version of the project - REQUIRED", cxxopts::value<std::string>())
             ("oldDir, oldDirectory", "Path to the older version of the project - REQUIRED", cxxopts::value<std::string>())
             ("oldCD, oldCompilationDatabase", "Path to the compilation database of the old directory", cxxopts::value<std::string>())

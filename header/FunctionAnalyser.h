@@ -6,7 +6,7 @@
 #include <clang/AST/RecursiveASTVisitor.h>
 #include "../include/json.hpp"
 
-namespace analysis{
+namespace functionanalysis{
     class FunctionInstance {
     public:
         bool isDeclaration;

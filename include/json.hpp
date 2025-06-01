@@ -7404,9 +7404,9 @@ class lexer_base
     }
 };
 /*!
-@brief lexical analysis
+@brief lexical functionanalysis
 
-This class organizes the lexical analysis during JSON deserialization.
+This class organizes the lexical functionanalysis during JSON deserialization.
 */
 template<typename BasicJsonType, typename InputAdapterType>
 class lexer : public lexer_base<BasicJsonType>
@@ -12150,7 +12150,7 @@ using parser_callback_t =
     std::function<bool(int /*depth*/, parse_event_t /*event*/, BasicJsonType& /*parsed*/)>;
 
 /*!
-@brief syntax analysis
+@brief syntax functionanalysis
 
 This class implements a recursive descent parser.
 */

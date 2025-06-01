@@ -2,7 +2,7 @@
 #include <vector>
 #include "header/CodeMatcher.h"
 #include <llvm/Support/CommandLine.h>
-#include "header/Analyser.h"
+#include "header/FunctionAnalyser.h"
 #include "header/HelperFunctions.h"
 
 
@@ -34,7 +34,7 @@ namespace matcher{
 
 
 
-    double compareFunctionBodies(const analysis::FunctionInstance& oldFunc, const analysis::FunctionInstance& newFunc) {
+    double compareFunctionBodies(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) {
         auto strippedNewCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body));
         auto strippedOldCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body));
         // TODO: reevaluate if it is a good idea to completly ignore empty functions in the comparison

@@ -23,7 +23,7 @@ public:
         this->files = std::map<string, JSONFile>();
     }
 
-    void initialiseFunctionInstance(const analysis::FunctionInstance &func) override {
+    void initialiseFunctionInstance(const functionanalysis::FunctionInstance &func) override {
         if(files.count(func.filename) == 0) {
             JSONFile newFile = JSONFile(func.filename);
             files.insert(make_pair(newFile.file, newFile));
@@ -41,7 +41,7 @@ public:
     }
 
 
-    void outputNewParam(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) override{
+    void outputNewParam(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override{
         std::string insertionLocation;
         std::string reference;
 
@@ -58,12 +58,12 @@ public:
         currentFunc->insertActions.push_back(insertAction);
     }
 
-    void outputParamChange(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) override {
+    void outputParamChange(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
         ReplaceAction replaceAction = ReplaceAction("parameter type", oldFunc.params.at(oldPosition).first + " " + oldFunc.params.at(oldPosition).second.first, newParam.first + " " + newParam.second.first);
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputParamDefaultChange(int oldPosition, const analysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const analysis::FunctionInstance& newFunc) override {
+    void outputParamDefaultChange(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
         // if the default is now empty and had a value earlier, it constitutes a new param
         if(newParam.second.second.empty() && !oldFunc.params.at(oldPosition).second.second.empty()){
             outputNewParam(oldPosition, oldFunc, newParam, newFunc);
@@ -82,23 +82,23 @@ public:
         currentFunc->removeActions.push_back(removeAction);
     }
 
-    void outputNewReturn(const analysis::FunctionInstance &newFunc, std::string oldReturn) override {
+    void outputNewReturn(const functionanalysis::FunctionInstance &newFunc, std::string oldReturn) override {
         ReplaceAction replaceAction = ReplaceAction("return type", oldReturn, newFunc.returnType);
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputNewScope(const analysis::FunctionInstance& newFunc, const analysis::FunctionInstance& oldFunc) override {
+    void outputNewScope(const functionanalysis::FunctionInstance& newFunc, const functionanalysis::FunctionInstance& oldFunc) override {
         if(newFunc.scope == "private"){
             outputDeletedFunction(oldFunc, false);
         } // otherwise do nothing, as no action makes sense here?
     }
 
-    void outputNewNamespaces(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance& oldFunc) override {
+    void outputNewNamespaces(const functionanalysis::FunctionInstance &newFunc, const functionanalysis::FunctionInstance& oldFunc) override {
         ReplaceAction replaceAction = ReplaceAction("namespace", helper::getAllNamespacesAsString(oldFunc.location), helper::getAllNamespacesAsString(newFunc.location));
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputNewFilename(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance &oldFunc) override{
+    void outputNewFilename(const functionanalysis::FunctionInstance &newFunc, const functionanalysis::FunctionInstance &oldFunc) override{
         /* remove function in file 1
         RemoveAction removeAction = RemoveAction("function definition", oldFunc.fullHeader);
         currentFunc->removeActions.push_back(removeAction);
@@ -107,11 +107,11 @@ public:
 
     }
 
-    void outputNewDeclPositions(const analysis::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
+    void outputNewDeclPositions(const functionanalysis::FunctionInstance &newFunc, std::vector<std::string> addedDecl) override {
         // TODO: in my opinion not compatible / usable -> not really an insertion or is it?
     }
 
-    void outputDeletedDeclPositions(const analysis::FunctionInstance &newFunc, std::vector<std::string> deletedDecl, const analysis::FunctionInstance& oldFunc) override {
+    void outputDeletedDeclPositions(const functionanalysis::FunctionInstance &newFunc, std::vector<std::string> deletedDecl, const functionanalysis::FunctionInstance& oldFunc) override {
         RemoveAction removeAction = RemoveAction("function declaration", oldFunc.fullHeader);
         for (const auto &item: deletedDecl){
             if(files.count(item) == 0){
@@ -128,7 +128,7 @@ public:
         }
     }
 
-    void outputDeletedFunction(const analysis::FunctionInstance &deletedFunc, bool overloaded) override {
+    void outputDeletedFunction(const functionanalysis::FunctionInstance &deletedFunc, bool overloaded) override {
         if(deletedFunc.isDeclaration){
             RemoveAction removeAction = RemoveAction("function declaration", deletedFunc.fullHeader);
             currentFunc->removeActions.push_back(removeAction);
@@ -139,24 +139,24 @@ public:
         }
     }
 
-    void outputOverloadedDisclaimer(const analysis::FunctionInstance &func, std::string percentage) override {
+    void outputOverloadedDisclaimer(const functionanalysis::FunctionInstance &func, std::string percentage) override {
         // not relevant for this format, stays empty
     }
 
-    void outputRenamedFunction(const analysis::FunctionInstance &newFunc, std::string oldName, std::string percentage) override {
+    void outputRenamedFunction(const functionanalysis::FunctionInstance &newFunc, std::string oldName, std::string percentage) override {
         ReplaceAction replaceAction = ReplaceAction("function name", oldName, newFunc.name);
         currentFunc->replaceActions.push_back(replaceAction);
     }
 
-    void outputStorageClassChange(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance &oldFunc) override {
+    void outputStorageClassChange(const functionanalysis::FunctionInstance &newFunc, const functionanalysis::FunctionInstance &oldFunc) override {
         // TODO: is this a replacement?
     }
 
-    void outputFunctionSpecifierChange(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance &oldFunc) override{
+    void outputFunctionSpecifierChange(const functionanalysis::FunctionInstance &newFunc, const functionanalysis::FunctionInstance &oldFunc) override{
         // TODO: is this a replacement?
     }
 
-    void outputFunctionConstChange(const analysis::FunctionInstance &newFunc, const analysis::FunctionInstance &oldFunc) override {
+    void outputFunctionConstChange(const functionanalysis::FunctionInstance &newFunc, const functionanalysis::FunctionInstance &oldFunc) override {
         // TODO: is this a replacement?
     }
 
@@ -169,66 +169,6 @@ public:
     }
 
     // Variables
-
-    void outputVariableDeleted(const variableanalysis::VariableInstance& var) override{
-
-    }
-
-    void outputVariableDefinitionDeleted(const variableanalysis::VariableInstance &var) override{
-
-    }
-
-    void outputVariableDefinitionAdded(const variableanalysis::VariableInstance &var) override{
-
-    }
-
-    void outputVariableFileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
-
-    }
-
-    void outputVariableLocationChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override{
-
-    }
-
-    void outputVariableTypeChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableDefaultValueChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableStorageClassChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableInlineChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableAccessSpecifierChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableConstChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableExplicitChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableVolatileChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableMutableChange(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
-
-    void outputVariableClassMember(const variableanalysis::VariableInstance& oldVar, const variableanalysis::VariableInstance& newVar) override {
-
-    }
 
     bool endOfCurrentVariable() override {
         return true;

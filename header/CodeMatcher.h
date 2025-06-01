@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include "Analyser.h"
+#include "FunctionAnalyser.h"
 
 namespace matcher{
 
@@ -40,6 +40,6 @@ namespace matcher{
         }
     };
 
-    double compareFunctionBodies(const analysis::FunctionInstance& oldFunc, const analysis::FunctionInstance& newFunc);
+    double compareFunctionBodies(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc);
     std::vector<Operation> getOptimalParamConversion(std::vector<std::pair<std::string, std::pair<std::string, std::string>>> oldParamStructure, std::vector<std::pair<std::string, std::pair<std::string, std::string>>> newParamStructure);
 }

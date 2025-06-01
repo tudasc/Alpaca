@@ -1,4 +1,4 @@
-#include "header/Analyser.h"
+#include "header/FunctionAnalyser.h"
 #include <llvm/Support/CommandLine.h>
 #include "header/CodeMatcher.h"
 #include "header/HelperFunctions.h"
@@ -7,10 +7,10 @@
 
 
 using namespace llvm;
-using namespace analysis;
+using namespace functionanalysis;
 using namespace std;
 
-namespace analysis{
+namespace functionanalysis{
 
     class Analyser {
         std::vector<FunctionInstance> oldProgram;
@@ -98,7 +98,7 @@ namespace analysis{
                     if (bodyStatus.first.empty()) {
                         outputHandler->outputDeletedFunction(func, false);
                     } else {
-                        // use the function found during the statistical analysis
+                        // use the function found during the statistical functionanalysis
                         FunctionInstance newFunc = newProgram.at(findFunction(newProgram, bodyStatus.first));
                         if (newFunc.name != func.name) {
                             // further checks on the Header to ensure, that this is indeed a renamed function

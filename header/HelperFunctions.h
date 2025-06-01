@@ -1,7 +1,7 @@
 #pragma once
 
 #include <map>
-#include "Analyser.h"
+#include "FunctionAnalyser.h"
 
 namespace helper {
 
@@ -11,5 +11,5 @@ namespace helper {
     std::string stripCodeOfEmptySpaces(std::string code);
     std::string stripCodeOfComments(std::string code);
     std::vector<std::string> convertPairIntoFlatVector(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& vec);
-    std::string retrieveFunctionHeader(const analysis::FunctionInstance& func);
+    std::string retrieveFunctionHeader(const functionanalysis::FunctionInstance& func);
 }

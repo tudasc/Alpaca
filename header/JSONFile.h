@@ -2,12 +2,12 @@
 
 #include <vector>
 #include "../include/json.hpp"
-#include "Analyser.h"
+#include "FunctionAnalyser.h"
 #include "JSONDefinitions/JSONFunction.h"
 
 
 using json = nlohmann::json;
-using namespace analysis;
+using namespace functionanalysis;
 namespace customJSON {
 
     struct JSONFile {
