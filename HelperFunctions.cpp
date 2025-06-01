@@ -13,12 +13,39 @@ namespace helper {
 
     std::vector<std::string> acceptedFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx",".cppm"};
 
-    void listFiles(const std::string &path, std::vector<std::string>* listOfFiles){
-        for(const auto& entry : fs::recursive_directory_iterator(path)){
-            if(entry.is_directory() || !(std::find(acceptedFileEndings.begin(), acceptedFileEndings.end(), fs::path(entry.path()).extension()) != acceptedFileEndings.end())){
+    void listFiles(const std::string &path, std::vector<std::string>* listOfFiles, const std::vector<std::string>* excludedFiles){
+        fs::recursive_directory_iterator it(path);
+
+        for(decltype(it) end; it != end; ++it){
+            auto iteratedFile = it->path().string();
+            if(it->is_directory()) {
+                if (std::find_if(excludedFiles->begin(), excludedFiles->end(), [iteratedFile, path](std::string str){
+                    if(str.at(str.length()-1) == '/' || str.at(str.length()-1) == '\\'){
+                        str = str.substr(0, str.length() - 1);
+                    }
+                    if(str.at(0) == '/' || str.at(0) == '\\'){
+                        str = str.substr(1, str.length());
+                    }
+                    str = path + str;
+                    if(iteratedFile.length() < str.length()){
+                        return false;
+                    }
+                    return str == iteratedFile;
+                }) != excludedFiles->end()){
+                    it.disable_recursion_pending();
+                }
                 continue;
             }
-            listOfFiles->push_back(fs::canonical(entry.path()));
+            if(std::find_if(excludedFiles->begin(), excludedFiles->end(), [it](const std::string& str){
+                if(it->path().string().length() < str.length()){
+                    return false;
+                }
+                return str == it->path().string().substr(it->path().string().length() - str.length(), str.length());
+            }) != excludedFiles->end() || !(std::find(acceptedFileEndings.begin(), acceptedFileEndings.end(), fs::path(it->path()).extension()) != acceptedFileEndings.end())){
+                continue;
+            }
+
+            listOfFiles->push_back(fs::canonical(it->path()));
         }
     }
 

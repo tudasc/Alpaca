@@ -38,6 +38,9 @@ namespace variableanalysis {
         }
         void compareVariables(){
             for (const auto &oldVar: oldVariables){
+                if(oldVar.accessSpecifier == "private" || oldVar.accessSpecifier == "protected"){
+                    continue;
+                }
                 outputHandler->initialiseVariableInstance(oldVar);
                 auto indexInNew = findVariable(newVariables, oldVar);
                 if(indexInNew != -1){

@@ -469,6 +469,9 @@ int main(int argc, const char **argv) {
             ("extra-args, extra-arguments", "Add additional clang arguments for both projects, separated with ,", cxxopts::value<std::vector<std::string>>())
             ("extra-args-old, extra-arguments-old", "Add additional clang arguments for the old project, separated with ,", cxxopts::value<std::vector<std::string>>())
             ("extra-args-new, extra-arguments-new", "Add additional clang arguments for the new project, separated with ,", cxxopts::value<std::vector<std::string>>())
+            ("exclude, exc", "Add directories or files that should be ignored (relative Path from the root of the directory) WARNING: only use if the project structure has not changed", cxxopts::value<std::vector<std::string>>())
+            ("exclude-new, excN", "Add directories or files of the new program that should be ignored (relative Path from the given new directory)", cxxopts::value<std::vector<std::string>>())
+            ("exclude-old, excO", "Add directories or files of the old program that should be ignored (relative Path from the given old directory)", cxxopts::value<std::vector<std::string>>())
             ("h,help", "Print usage")
             ;
     auto result = options.parse(argc, argv);
@@ -478,11 +481,32 @@ int main(int argc, const char **argv) {
         return 0;
     }
 
+    vector<string> oldExcludedItems;
+    vector<string> newExcludedItems;
+    if(result["exclude"].count()) {
+        for (auto &item : result["exclude"].as<std::vector<std::string>>()) {
+            oldExcludedItems.push_back(item);
+            newExcludedItems.push_back(item);
+        }
+    }
+
+    if(result["exclude-new"].count()) {
+        for (auto &item : result["exclude-new"].as<std::vector<std::string>>()) {
+            newExcludedItems.push_back(item);
+        }
+    }
+
+    if(result["exclude-old"].count()) {
+        for (auto &item : result["exclude-old"].as<std::vector<std::string>>()) {
+            oldExcludedItems.push_back(item);
+        }
+    }
+
     std::vector<std::string> oldFiles;
     std::vector<std::string> newFiles;
 
     if(result.count("oldDir")){
-        listFiles(result["oldDir"].as<std::string>(), &oldFiles);
+        listFiles(result["oldDir"].as<std::string>(), &oldFiles, &oldExcludedItems);
         outs()<<"The old directory contains " + itostr(oldFiles.size()) + " files\n";
 
     }else{
@@ -490,7 +514,7 @@ int main(int argc, const char **argv) {
     }
 
     if(result.count("newDir")){
-        listFiles(result["newDir"].as<std::string>(), &newFiles);
+        listFiles(result["newDir"].as<std::string>(), &newFiles, &newExcludedItems);
         outs()<<"The new directory contains " + itostr(newFiles.size()) + " files\n";
     }else{
         throw std::invalid_argument("The older version of the project has to be specified (--oldDir has to be set)");
