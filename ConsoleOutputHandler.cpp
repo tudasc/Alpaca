@@ -138,17 +138,20 @@ public:
         output += "The function is now a template";
     }
 
-    void outputTemplateParameterAdded(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const std::string& newParam, const functionanalysis::FunctionInstance& newFunc) override {
-        output += "The template parameter " + newParam + " was added after the position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+    void outputTemplateParameterAdded(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
+        output += "The template parameter " + helper::getSingleTemplateParamAsString(newParam) + " was added after the position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
     }
 
     void outputTemplateParameterDeleted(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) override {
-        output += "The template parameter " + oldFunc.templateParams.at(oldPosition) + " was deleted at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+        output += "The template parameter " + helper::getSingleTemplateParamAsString(oldFunc.params.at(oldPosition)) + " was deleted at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
     }
 
-    void outputTemplateParameterChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const std::string& newParam, const functionanalysis::FunctionInstance& newFunc) override {
-        // TODO: this doesnt make sense, because the template param names are interchangeable anyway, right? - maybe relevant for specializations?
-        //output += "The template parameter " + oldFunc.templateParams.at(oldPosition) + " was changed to " + newParam + " at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+    void outputTemplateParameterChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
+        output += "The template parameter " + helper::getSingleTemplateParamAsString(oldFunc.templateParams.at(oldPosition)) + " was changed to " + helper::getSingleTemplateParamAsString(newParam) + " at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+    }
+
+    void outputTemplateParameterDefaultChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override {
+        output += "The template parameters " + helper::getSingleTemplateParamAsString(oldFunc.templateParams.at(oldPosition)) + " default value was changed to " + helper::getSingleTemplateParamAsString(newParam) + " at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
     }
 
     void outputNewSpecialization(const functionanalysis::FunctionInstance& newSpec) override {

@@ -26,7 +26,21 @@ template <typename T> T templateParamAdded(T x, T y){
     return x + y + x;
 }
 
+template <int B> int templateWithValue(int x){
+    return x + B;
+}
 
+template <int B, int X=20> int templateWithDefaultChange(){
+    return B + X;
+}
+
+template <typename B, typename X> X templateWithDefaultAdded(X x){
+    return x;
+}
+
+template <typename B, typename X=bool> X templateWithDefaultDeleted(X x){
+    return x;
+}
 
 bool definitionFileChange = true;
 

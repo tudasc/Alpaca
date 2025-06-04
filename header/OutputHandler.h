@@ -53,11 +53,13 @@ public:
 
     virtual void outputFunctionIsNowTemplate(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) {};
 
-    virtual void outputTemplateParameterAdded(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const std::string& newParam, const functionanalysis::FunctionInstance& newFunc) {};
+    virtual void outputTemplateParameterAdded(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) {};
 
     virtual void outputTemplateParameterDeleted(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) {};
 
-    virtual void outputTemplateParameterChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const std::string& newParam, const functionanalysis::FunctionInstance& newFunc) {};
+    virtual void outputTemplateParameterChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) {};
+
+    virtual void outputTemplateParameterDefaultChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) {};
 
     virtual void outputNewSpecialization(const functionanalysis::FunctionInstance& newSpec) {};
 

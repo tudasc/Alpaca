@@ -21,6 +21,22 @@ template <typename T, typename C> T specDeleted (T x, C y){
     return x;
 }
 
+template <int B, int X> int templateWithValue(int x){
+    return x + B + X;
+}
+
+template <int B, int X=10> int templateWithDefaultChange(){
+    return B + X;
+}
+
+template <typename B, typename X=int> X templateWithDefaultAdded(X x){
+    return x;
+}
+
+template <typename B, typename X> X templateWithDefaultDeleted(X x){
+    return x;
+}
+
 void differentNumberParams(int check);
 
 void differentNumberParams(int check){
