@@ -17,6 +17,10 @@ public:
 
     void initialiseFunctionInstance(const functionanalysis::FunctionInstance &func) override {
         this->startingMessage = "-------------------------------------" + func.qualifiedName + " (Function) -------------------------------------\n";
+        this->startingMessage += "Full old function header " + func.fullHeader + "\n";
+        if(func.isTemplateDecl){
+            this->startingMessage += "------------- This function is a template -------------\n";
+        }
         output = startingMessage;
     }
 
@@ -125,8 +129,37 @@ public:
         return false;
     }
 
-    // Variables
+    // Templates
+    void outputTemplateIsNowFunction(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) override {
+        output += "The template is now a function";
+    }
 
+    void outputFunctionIsNowTemplate(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) override {
+        output += "The function is now a template";
+    }
+
+    void outputTemplateParameterAdded(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const std::string& newParam, const functionanalysis::FunctionInstance& newFunc) override {
+        output += "The template parameter " + newParam + " was added after the position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+    }
+
+    void outputTemplateParameterDeleted(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) override {
+        output += "The template parameter " + oldFunc.templateParams.at(oldPosition) + " was deleted at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+    }
+
+    void outputTemplateParameterChanged(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, const std::string& newParam, const functionanalysis::FunctionInstance& newFunc) override {
+        // TODO: this doesnt make sense, because the template param names are interchangeable anyway, right? - maybe relevant for specializations?
+        //output += "The template parameter " + oldFunc.templateParams.at(oldPosition) + " was changed to " + newParam + " at position " + std::to_string(oldPosition) + ". Full params: " + helper::getAllTemplateParamsAsString(oldFunc.templateParams) + " -> " + helper::getAllTemplateParamsAsString(newFunc.templateParams) + "\n";
+    }
+
+    void outputNewSpecialization(const functionanalysis::FunctionInstance& newSpec) override {
+        output += "A new specialization was added with the params " + helper::getAllParamsAsString(newSpec.params) + "\n";
+    }
+
+    void outputDeletedSpecialization(const functionanalysis::FunctionInstance& oldSpec) override {
+        output += "The specialization with the params " + helper::getAllParamsAsString(oldSpec.params) + " was deleted\n";
+    }
+
+    // Variables
     void outputVariableDeleted(const variableanalysis::VariableInstance& var) override{
         output += "The variable has been deleted\n";
     }

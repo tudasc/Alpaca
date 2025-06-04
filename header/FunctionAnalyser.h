@@ -24,6 +24,10 @@ namespace functionanalysis{
         std::string memberFunctionSpecifier;
         std::string fullHeader;
         bool isConst;
+        bool isTemplateDecl;
+        bool isTemplateSpec;
+        std::vector<FunctionInstance> templateSpecializations;
+        std::vector<std::string> templateParams;
         std::string getAsString(){
             std::string output;
             output += "\n-----------------" + name + "-----------------\n";

@@ -78,6 +78,23 @@ public:
             functionInstance.isConst = false;
         }
 
+        if (functionDecl->isFunctionTemplateSpecialization()) {
+            functionInstance.isTemplateSpec = true;
+            functionInstance.isTemplateDecl = false;
+            for (const auto &item: functionDecl->getTemplateSpecializationArgs()->asArray()) {
+                functionInstance.templateParams.push_back(item.getAsType().getAsString());
+            }
+        } else if (functionDecl->getDescribedFunctionTemplate()) {
+            functionInstance.isTemplateSpec = false;
+            functionInstance.isTemplateDecl = true;
+            for (const auto &item: *functionDecl->getDescribedFunctionTemplate()->getTemplateParameters()) {
+                functionInstance.templateParams.push_back(item->getNameAsString());
+            }
+        }else {
+            functionInstance.isTemplateSpec = false;
+            functionInstance.isTemplateDecl = false;
+        }
+
         // check if extern
         if(functionDecl->getStorageClass() == clang::StorageClass::SC_Extern){
             functionInstance.storageClass = "extern";
@@ -157,8 +174,9 @@ public:
 
         SourceManager &sourceManager = functionDecl->getASTContext().getSourceManager();
         SourceRange sourceRange = functionDecl->getSourceRange();
-        auto entireHeader = Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceManager, LangOptions(), 0);
-        entireHeader = entireHeader.substr(0, entireHeader.find("{"));
+        auto entireHeader = Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceManager, LangOptions(), nullptr).str();
+        entireHeader = entireHeader.substr(0, entireHeader.find('{'));
+        entireHeader.erase(std::remove(entireHeader.begin(), entireHeader.end(), '\n'), entireHeader.end());
 
         functionInstance.fullHeader = entireHeader;
 
@@ -442,14 +460,41 @@ std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<v
     }
 
     // delete all the declarations from the list
-    for (int i=0;i<variables.size();i++)
+    for (auto & variable : variables)
     {
         // adds definitions to the output
-        if (!(variables.at(i).isDefinition && std::find_if(usedDefinitions.begin(), usedDefinitions.end(),[variables, i](const variableanalysis::VariableInstance& var){return variables.at(i).qualifiedName == var.qualifiedName;})!=usedDefinitions.end())) {
-            if(variables.at(i).isDefinition){
-                //variables.at(i).definitions.push_back(variables.at(i));
+        if (!(variable.isDefinition && std::find_if(usedDefinitions.begin(), usedDefinitions.end(),[variables, &variable](const variableanalysis::VariableInstance& var){return variable.qualifiedName == var.qualifiedName;})!=usedDefinitions.end())) {
+            output.push_back(variable);
+        }
+    }
+
+    return output;
+}
+
+std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance>& funcs){
+    std::vector<FunctionInstance> output;
+    std::vector<FunctionInstance> usedSpecializations;
+    for (auto &item: funcs){
+        if(item.isTemplateSpec){
+            continue;
+        }
+        // find all instances of this particular qualified name
+        for (auto &otherItem : funcs)
+        {
+            if(!otherItem.isTemplateSpec || otherItem.qualifiedName != item.qualifiedName || item.params.size() != otherItem.params.size()){
+                continue;
             }
-            output.push_back(variables.at(i));
+            item.templateSpecializations.push_back(otherItem);
+            usedSpecializations.push_back(otherItem);
+        }
+    }
+
+    // delete all the declarations from the list
+    for (auto & i : funcs)
+    {
+        // adds definitions to the output
+        if (!(i.isTemplateSpec && std::find_if(usedSpecializations.begin(), usedSpecializations.end(),[funcs, &i](const FunctionInstance& func){return i.qualifiedName == func.qualifiedName;})!=usedSpecializations.end())) {
+            output.push_back(i);
         }
     }
 
@@ -606,6 +651,9 @@ int main(int argc, const char **argv) {
     oldProgram = assignDeclarations(oldProgram);
     newProgram = assignDeclarations(newProgram);
 
+    oldProgram = assignSpecializations(oldProgram);
+    newProgram = assignSpecializations(newProgram);
+
     oldVariables = assignDeclarations(oldVariables);
     newVariables = assignDeclarations(newVariables);
 
@@ -617,7 +665,7 @@ int main(int argc, const char **argv) {
     }
 
     // Analysing Functions
-    Analyser analyser = Analyser(oldProgram, newProgram, outputHandler);
+    FunctionAnalyser analyser = FunctionAnalyser(oldProgram, newProgram, outputHandler);
     analyser.compareVersionsWithDoc(docEnabled, outputPrivateFunctions);
 
     // Analysing Variables

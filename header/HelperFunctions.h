@@ -12,4 +12,7 @@ namespace helper {
     std::string stripCodeOfComments(std::string code);
     std::vector<std::string> convertPairIntoFlatVector(const std::vector<std::pair<std::string, std::pair<std::string, std::string>>>& vec);
     std::string retrieveFunctionHeader(const functionanalysis::FunctionInstance& func);
+    std::vector<std::pair<std::string, std::pair<std::string, std::string>>> convertFlatParamsIntoParamStructure(const std::vector<std::string>& params);
+    std::string getAllTemplateParamsAsString(const std::vector<std::string>& params);
+    bool paramsAreEqual(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc);
 }
