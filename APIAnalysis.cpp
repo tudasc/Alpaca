@@ -423,6 +423,7 @@ public:
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
+        Compiler.getDiagnostics().setClient(new clang::IgnoringDiagConsumer(), true);
         return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var);
     }
 
