@@ -29,12 +29,12 @@ int overloaded(int w, bool z, bool y);
 static int secTest();
 
 class test {
+public:
     int newType;
     int newClass;
     int newScope;
     int newDefinition;
     int newConst = 10;
-public:
     void somethingPublic();
 protected:
     void somethingPrivate();
@@ -43,8 +43,8 @@ protected:
 };
 
 class switcher{
-    static int definitionFileChange;
 public:
+    static int definitionFileChange;
     bool switchFileButNotClass (int x, int z, int j) const;
 };
 

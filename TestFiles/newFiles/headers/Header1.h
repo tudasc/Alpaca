@@ -31,29 +31,30 @@ namespace nspace
 }
 
 class switcher{
+    int ignoredPrivate;
+public:
     int newClass;
     static int definitionFileChange;
-public:
     bool switchFileButNotClass (int x, int z, int j) const;
 };
 
 class test {
+public:
+private:
     bool newType;
     const int newConst = 20;
-public:
     int newScope;
     int static newDefinition;
-private:
     void somethingPrivate();
     void somethingPublic();
     virtual void virtualFunc();
 };
 
 namespace newNspace{
-    int sameName;
     void switchedNamespaceTest();
     class movingNamespace{
     public:
+        int sameName;
         int moveNamespace() const;
     };
 }
