@@ -42,4 +42,5 @@ namespace matcher{
 
     double compareFunctionBodies(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc);
     std::vector<Operation> getOptimalParamConversion(std::vector<std::pair<std::string, std::pair<std::string, std::string>>> oldParamStructure, std::vector<std::pair<std::string, std::pair<std::string, std::string>>> newParamStructure);
+    std::vector<std::vector<int>> levenshteinDistance(const std::vector<std::string>& s1, const std::vector<std::string>& s2);
 }

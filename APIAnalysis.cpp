@@ -181,12 +181,14 @@ public:
         if(functionDecl->isThisDeclarationADefinition()){
             functionInstance.isDeclaration = false;
             // saves the function body as a string
-            auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
-            LangOptions lang;
-            SourceManager *sm = &(Context->getSourceManager());
-            auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
-            functionInstance.body = std::string(sm->getCharacterData(start),
-                                                sm->getCharacterData(endToken) - sm->getCharacterData(start));
+            if(functionDecl->hasBody()) {
+                auto start = functionDecl->getBody()->getBeginLoc(), end = functionDecl->getBody()->getEndLoc();
+                LangOptions lang;
+                SourceManager *sm = &(Context->getSourceManager());
+                auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+                functionInstance.body = std::string(sm->getCharacterData(start),
+                                                    sm->getCharacterData(endToken) - sm->getCharacterData(start));
+            }
         } else {
             // marks the function as a Declaration and doesn't save the body
             functionInstance.isDeclaration = true;
@@ -541,9 +543,9 @@ int main(int argc, const char **argv) {
             ("extra-args, extra-arguments", "Add additional clang arguments for both projects, separated with ,", cxxopts::value<std::vector<std::string>>())
             ("extra-args-old, extra-arguments-old", "Add additional clang arguments for the old project, separated with ,", cxxopts::value<std::vector<std::string>>())
             ("extra-args-new, extra-arguments-new", "Add additional clang arguments for the new project, separated with ,", cxxopts::value<std::vector<std::string>>())
-            ("exclude, exc", "Add directories or files that should be ignored (relative Path from the root of the directory) WARNING: only use if the project structure has not changed", cxxopts::value<std::vector<std::string>>())
-            ("exclude-new, excN", "Add directories or files of the new program that should be ignored (relative Path from the given new directory)", cxxopts::value<std::vector<std::string>>())
-            ("exclude-old, excO", "Add directories or files of the old program that should be ignored (relative Path from the given old directory)", cxxopts::value<std::vector<std::string>>())
+            ("exclude, exc", "Add directories or files [separated with a comma] that should be ignored (relative Path from the root of the directory) WARNING: only use if the project structure has not changed", cxxopts::value<std::vector<std::string>>())
+            ("exclude-new, excN", "Add directories or files [separated with a comma] of the new program that should be ignored (relative Path from the given new directory)", cxxopts::value<std::vector<std::string>>())
+            ("exclude-old, excO", "Add directories or files [separated with a comma] of the old program that should be ignored (relative Path from the given old directory)", cxxopts::value<std::vector<std::string>>())
             ("h,help", "Print usage")
             ;
     auto result = options.parse(argc, argv);

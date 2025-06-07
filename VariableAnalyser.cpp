@@ -2,6 +2,7 @@
 #include <llvm/Support/CommandLine.h>
 #include "header/HelperFunctions.h"
 #include "header/OutputHandler.h"
+#include "header/CodeMatcher.h"
 
 namespace variableanalysis {
 
@@ -10,7 +11,7 @@ namespace variableanalysis {
         std::vector<VariableInstance> newVariables;
         OutputHandler* outputHandler;
     int findVariable(const std::vector<VariableInstance>& set, const VariableInstance& variableInstance){
-        // prioritylist (name has to be the same): qualifiedName > filename
+        // prioritylist (name has to be the same): qualifiedName > filename > closest match on location
         std::map<int, VariableInstance> possibleMatches;
         for(int i=0;i<set.size();i++){
             if(set.at(i).qualifiedName == variableInstance.qualifiedName){
@@ -27,8 +28,19 @@ namespace variableanalysis {
             }
         }
 
-        // if there isn't even a match with the same filename, return that no match was found
-        return -1;
+        // TODO: introduce a threshold at which the location is considered to be too far away and then maybe omit the file check
+        // if there isn't even a match with the same filename, return the variable with the closest matching location
+        int smallestDiff = std::numeric_limits<int>::max();
+        int candidate = -1;
+        for (const auto &item: possibleMatches){
+            auto matrix = matcher::levenshteinDistance(item.second.location, variableInstance.location);
+            if(smallestDiff > matrix[item.second.location.size()][variableInstance.location.size()]){
+                smallestDiff = matrix[item.second.location.size()][variableInstance.location.size()];
+                candidate = item.first;
+            }
+        }
+
+        return candidate;
     }
     public:
         VariableAnalyser(const std::vector<VariableInstance>& oldVariables, const std::vector<VariableInstance>& newVariables, OutputHandler* outputHandler){
