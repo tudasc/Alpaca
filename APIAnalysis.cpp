@@ -13,6 +13,8 @@
 #include "FunctionAnalyser.cpp"
 #include "header/VariableAnalyser.h"
 #include "VariableAnalyser.cpp"
+#include "ObjectAnalyser.cpp"
+#include "header/ObjectAnalyser.h"
 #include "ConsoleOutputHandler.cpp"
 #include "JSONOutputHandler.cpp"
 #include "filesystem"
@@ -49,12 +51,72 @@ class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor>
     std::vector<FunctionInstance>* program;
     std::string dir;
     std::vector<variableanalysis::VariableInstance>* variables;
+    std::vector<objectanalysis::ObjectInstance>* objects;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables, std::vector<objectanalysis::ObjectInstance>* objects) : Context(Context){
         this->program = program;
         this->dir = directory;
         this->variables = variables;
+        this->objects = objects;
     }
+
+    bool VisitRecordDecl(clang::RecordDecl *recordDecl){
+        if(!Context->getSourceManager().isInMainFile(recordDecl->getLocation())){
+            return true;
+        }
+        objectanalysis::ObjectInstance objectInstance;
+
+        objectInstance.name = recordDecl->getNameAsString();
+        objectInstance.qualifiedName = recordDecl->getQualifiedNameAsString();
+
+        std::string fullName = recordDecl->getQualifiedNameAsString();
+        std::string delimiter = "::";
+
+        int pos = 0;
+        std::string singleNamespace;
+        while ((pos = fullName.find(delimiter)) != std::string::npos) {
+            singleNamespace = fullName.substr(0, pos);
+            objectInstance.location.push_back(singleNamespace);
+            fullName.erase(0, pos + delimiter.length());
+        }
+
+        // gets the File Name
+        FullSourceLoc FullLocation = Context->getFullLoc(recordDecl->getBeginLoc());
+        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(recordDecl->getBeginLoc()).str()), dir);
+        objectInstance.filename = filename;
+
+        switch (recordDecl->getTagKind()) {
+            case TTK_Struct:
+                objectInstance.objectType = objectanalysis::ObjectType::STRUCT;
+                break;
+            case TTK_Class:
+                objectInstance.objectType = objectanalysis::ObjectType::CLASS;
+                break;
+            case TTK_Union:
+                objectInstance.objectType = objectanalysis::ObjectType::ENUM_UNION;
+                break;
+            case TTK_Enum:
+                objectInstance.objectType = objectanalysis::ObjectType::ENUM;
+                break;
+            default:
+                objectInstance.objectType = objectanalysis::ObjectType::UNKNOWN;
+                break;
+        }
+
+        if(recordDecl->getTagKind() == TTK_Class) {
+            auto *cxxRecordDecl = dyn_cast<CXXRecordDecl>(recordDecl);
+            objectInstance.isAbstract = cxxRecordDecl->isAbstract();
+            objectInstance.isFinal = cxxRecordDecl->isEffectivelyFinal();
+        }else{
+            objectInstance.isAbstract = false;
+            objectInstance.isFinal = false;
+        }
+
+        this->objects->push_back(objectInstance);
+
+        return true;
+    }
+
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
         // skip this function, if it's declared in the header files
@@ -402,7 +464,7 @@ private:
 
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var) : apiAnalysisVisitor(Context, program, dir, var){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects) : apiAnalysisVisitor(Context, program, dir, var, objects){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -417,16 +479,18 @@ class APIAnalysisAction : public clang::ASTFrontendAction {
     std::vector<FunctionInstance>* p;
     std::string directory;
     std::vector<variableanalysis::VariableInstance>* var;
+    std::vector<objectanalysis::ObjectInstance>* obj;
 public:
-    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var){
+    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects){
         this->p=program;
         this->directory = dir;
         this->var = var;
+        this->obj = objects;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
         Compiler.getDiagnostics().setClient(new clang::IgnoringDiagConsumer(), true);
-        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var);
+        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj);
     }
 
 private:
@@ -608,6 +672,10 @@ int main(int argc, const char **argv) {
     std::vector<variableanalysis::VariableInstance> oldVariables;
     std::vector<variableanalysis::VariableInstance> newVariables;
 
+    // lists of objects
+    std::vector<objectanalysis::ObjectInstance> oldObjects;
+    std::vector<objectanalysis::ObjectInstance> newObjects;
+
     // compilation Databases
     std::unique_ptr<CompilationDatabase> oldCD;
     std::unique_ptr<CompilationDatabase> newCD;
@@ -659,8 +727,8 @@ int main(int argc, const char **argv) {
         oldTool.appendArgumentsAdjuster(adjuster);
     }
 
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables).get());
 
+    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects).get());
     ClangTool newTool(*newCD,
                    newFiles);
 
@@ -675,7 +743,7 @@ int main(int argc, const char **argv) {
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
         newTool.appendArgumentsAdjuster(adjuster);
     }
-    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables).get());
+    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects).get());
 
     oldProgram = assignDeclarations(oldProgram);
     newProgram = assignDeclarations(newProgram);
@@ -692,6 +760,10 @@ int main(int argc, const char **argv) {
     }else{
         outputHandler = new ConsoleOutputHandler();
     }
+
+    // Analysing Objects
+    objectanalysis::ObjectAnalyser objectAnalyser = objectanalysis::ObjectAnalyser(oldObjects, newObjects, outputHandler);
+    objectAnalyser.compareObjects();
 
     // Analysing Functions
     FunctionAnalyser analyser = FunctionAnalyser(oldProgram, newProgram, outputHandler);

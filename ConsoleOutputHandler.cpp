@@ -29,6 +29,11 @@ public:
         output = startingMessage;
     }
 
+    void initialiseObjectInstance(const objectanalysis::ObjectInstance& obj) override {
+        this->startingMessage = "-------------------------------------" + obj.qualifiedName + " (Class / Namespace / Struct / Enum) -------------------------------------\n";
+        output = startingMessage;
+    }
+
     void outputNewParam(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override{
         if(oldPosition != 0) {
             output +=
@@ -248,6 +253,48 @@ public:
     }
 
     bool endOfCurrentVariable() override {
+        if(output != startingMessage){
+            output += "\n";
+            completeOutput += output;
+            return true;
+        }
+        return false;
+    }
+
+    void outputObjectDeleted(const objectanalysis::ObjectInstance& obj) override {
+        output += "The object has been deleted\n";
+    }
+
+    void outputObjectFilenameChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) override {
+        output += "The object filename changed from " + oldObj.filename + " to " + newObj.filename + "\n";
+    }
+
+    void outputObjectLocationChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) override {
+        output += "The object location has changed from " + helper::getAllNamespacesAsString(oldObj.location) + " to " + helper::getAllNamespacesAsString(newObj.location) + "\n";
+    }
+
+    void outputObjectFinalChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) override {
+        if(oldObj.isFinal){
+            output += "The object is not declared final anymore\n";
+        }else{
+            output += "The object is now declared final\n";
+        }
+    }
+
+    void outputObjectAbstractChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) override {
+        if(oldObj.isAbstract){
+            output += "The object is not declared abstract anymore\n";
+        }else{
+            output += "The object is now declared abstract\n";
+        }
+    }
+
+    void outputObjectTypeChange(const objectanalysis::ObjectInstance& oldObj, const objectanalysis::ObjectInstance& newObj) override {
+        // TODO: C++ Enums are stupid, maybe change to string..
+        output += "The object type changed\n";
+    }
+
+    bool endOfCurrentObject() override {
         if(output != startingMessage){
             output += "\n";
             completeOutput += output;

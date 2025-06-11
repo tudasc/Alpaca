@@ -40,6 +40,10 @@ public:
         // TODO: currentVar
     }
 
+    void initialiseObjectInstance(const objectanalysis::ObjectInstance& obj) override {
+        // cant handle
+    }
+
 
     void outputNewParam(int oldPosition, const functionanalysis::FunctionInstance& oldFunc, std::pair<std::string, std::pair<std::string, std::string>> newParam, const functionanalysis::FunctionInstance& newFunc) override{
         std::string insertionLocation;
@@ -171,6 +175,11 @@ public:
     // Variables
 
     bool endOfCurrentVariable() override {
+        return true;
+    }
+
+    // Objects
+    bool endOfCurrentObject() override {
         return true;
     }
 
