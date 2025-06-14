@@ -39,10 +39,10 @@ namespace functionanalysis{
             return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc, newFunc);
         }
 
-        int findFunction(const std::vector<FunctionInstance>& set, const std::string& qualifiedName){
+        int findFunction(const std::vector<FunctionInstance>& set, const FunctionInstance& oldFunc){
             int tempSafe = -1;
             for(int i=0;i<set.size();i++){
-                if(set.at(i).qualifiedName == qualifiedName){
+                if(set.at(i).qualifiedName == oldFunc.qualifiedName && set.at(i).filename == oldFunc.filename){
                     // prefer definitions to declarations if one is found
                     if(!set.at(i).isDeclaration){
                         return i;
@@ -95,11 +95,11 @@ namespace functionanalysis{
                     outputHandler->initialiseFunctionInstance(func);
                     auto bodyStatus = findBody(func, docEnabled);
                     // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
-                    if (bodyStatus.first.empty()) {
+                    if (bodyStatus.first == -1) {
                         outputHandler->outputDeletedFunction(func, false);
                     } else {
                         // use the function found during the statistical functionanalysis
-                        FunctionInstance newFunc = newProgram.at(findFunction(newProgram, bodyStatus.first));
+                        FunctionInstance newFunc = newProgram.at(bodyStatus.first);
                         if (newFunc.name != func.name) {
                             // further checks on the Header to ensure, that this is indeed a renamed function
                             if (!compareFunctionHeader(func, newFunc, true)) {
@@ -121,7 +121,7 @@ namespace functionanalysis{
                     ++i;
                 } else if (countFunctions(newProgram, func) == 1) {
                     outputHandler->initialiseFunctionInstance(func);
-                    FunctionInstance newFunc = newProgram.at(findFunction(newProgram, func.qualifiedName));
+                    FunctionInstance newFunc = newProgram.at(findFunction(newProgram, func));
                     compareFunctionHeader(func, newFunc, false);
                     outputHandler->endOfCurrentFunction();
                     ++i;
@@ -131,8 +131,8 @@ namespace functionanalysis{
             }
         }
     private:
-        std::pair<std::string, double> findBody(const FunctionInstance &oldFunc, bool docEnabled) {
-            std::string currentHighest = "";
+        std::pair<int, double> findBody(const FunctionInstance &oldFunc, bool docEnabled) {
+            int currentHighest = -1;
             double currentHighestValue = -1;
             for (int i = 0; i < newProgram.size(); i++) {
                 FunctionInstance newFunc = newProgram.at(i);
@@ -142,15 +142,15 @@ namespace functionanalysis{
                 if (docEnabled) {
                     double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
 
-                    // prioritize functions that have the exact same name
-                    if (oldFunc.name == newFunc.name && percentageDifference >= percentageCutOff) {
-                        return std::make_pair(newFunc.qualifiedName, percentageDifference);
+                    // prioritize functions that have the exact same name in the same file
+                    if (oldFunc.name == newFunc.name && percentageDifference >= percentageCutOff && oldFunc.filename == newFunc.filename) {
+                        return std::make_pair(i, percentageDifference);
                     }
 
                     if (percentageDifference >= percentageCutOff) {
                         if (percentageDifference > currentHighestValue) {
                             currentHighestValue = percentageDifference;
-                            currentHighest = newFunc.qualifiedName;
+                            currentHighest = i;
                         }
                     }
                 } else {
@@ -158,7 +158,7 @@ namespace functionanalysis{
                     if (helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body)) ==
                         helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body))) {
                         currentHighestValue = 100;
-                        currentHighest = newFunc.qualifiedName;
+                        currentHighest = i;
                         break;
                     }
                 }
