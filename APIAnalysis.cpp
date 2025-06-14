@@ -105,7 +105,11 @@ public:
 
         if(recordDecl->getTagKind() == TTK_Class) {
             auto *cxxRecordDecl = dyn_cast<CXXRecordDecl>(recordDecl);
-            objectInstance.isAbstract = cxxRecordDecl->isAbstract();
+            if(cxxRecordDecl && cxxRecordDecl->hasDefinition()) {
+                objectInstance.isAbstract = cxxRecordDecl->isAbstract();
+            }else{
+                objectInstance.isAbstract = false;
+            }
             objectInstance.isFinal = cxxRecordDecl->isEffectivelyFinal();
         }else{
             objectInstance.isAbstract = false;
