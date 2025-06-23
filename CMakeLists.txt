@@ -42,6 +42,8 @@ target_link_libraries(APIAnalysis
   clangTooling
   )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 #wir wollen das die ausführbare datei keine run time type information generiert
 #das ist notwendig weil die bibliothek (clangTooling) auch keine rtti hat, 
 #und wir die gleiche configuration haben müssen

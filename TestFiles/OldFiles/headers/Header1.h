@@ -16,6 +16,8 @@ static int rename();
 
 extern const void paramChange(int x, bool z, int p = 10);
 
+double onlyDeclaredNotDefined(int x);
+
 double switchHeaderFile(int a);
 
 void overloaded(int x, int y);

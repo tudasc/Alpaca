@@ -1,11 +1,14 @@
-#include <stdio.h>
 #include "headers/Header1.h"
 #include "headers/Header2.h"
+#include <iostream>
+#include <string>
 
 int someValue = 200;
 
 template <typename T, class B> T specAdded(T x, B y)
 {
+    printf("Hello World");
+    std::string test = "Hello World";
     return (x > y) ? x : y;
 }
 
@@ -133,9 +136,12 @@ class otherClass{
     const int otherClass=20;
 };
 
+/*
 int main() {
     differentNumberParams();
+
     bool test = false;
     bool* testPtr = &test;
     int smth = newReturn(testPtr, 20);
 }
+*/

@@ -17,21 +17,35 @@ public:
     ConsoleOutputHandler()= default;
 
     void initialiseFunctionInstance(const functionanalysis::FunctionInstance &func) override {
-        this->startingMessage = "-------------------------------------" + func.qualifiedName + " (Function) -------------------------------------\n";
-        this->startingMessage += "Full old function header " + func.fullHeader + "\n";
+        this->startingMessage = "===================================== (Function) =====================================\n";
+        this->startingMessage += "Qualified (old) function name: " + func.qualifiedName + "\n";
+        this->startingMessage += "Full old params: " + helper::getAllParamsAsString(func.params) + "\n";
+        this->startingMessage += "Filename: " + func.filename + "\n";
         if(func.isTemplateDecl){
-            this->startingMessage += "------------- This function is a template -------------\n";
+            this->startingMessage += "Is a template\n";
         }
+        if(func.isDeclaration){
+            this->startingMessage += "Is a declaration\n";
+        }
+        output+= "-----------------------\n";
         output = startingMessage;
     }
 
     void initialiseVariableInstance(const variableanalysis::VariableInstance &var) override {
-        this->startingMessage = "-------------------------------------" + var.qualifiedName + " (Variable) -------------------------------------\n";
+        this->startingMessage = "===================================== (Variable) =====================================\n";
+        this->startingMessage += "Qualified (old) variable name: " + var.qualifiedName + "\n";
+        this->startingMessage += "Type: " + var.type + "\n";
+        this->startingMessage += "Filename: " + var.filename + "\n";
+        this->startingMessage += "Default value: " + var.defaultValue + "\n";
+        this->startingMessage += "-----------------------\n";
         output = startingMessage;
     }
 
     void initialiseObjectInstance(const objectanalysis::ObjectInstance& obj) override {
-        this->startingMessage = "-------------------------------------" + obj.qualifiedName + " (Class / Namespace / Struct / Enum) -------------------------------------\n";
+        this->startingMessage = "===================================== (Object) =====================================\n";
+        this->startingMessage += "Qualified (old) object name: " + obj.qualifiedName + "\n";
+        this->startingMessage += "Filename: " + obj.filename + "\n";
+        this->startingMessage += "-----------------------\n";
         output = startingMessage;
     }
 

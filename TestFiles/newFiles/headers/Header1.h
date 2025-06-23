@@ -40,6 +40,7 @@ public:
 
 class test {
 public:
+    test(){}
 private:
     bool newType;
     const int newConst = 20;

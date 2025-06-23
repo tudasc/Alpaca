@@ -16,6 +16,7 @@ namespace functionanalysis{
         std::vector<FunctionInstance> oldProgram;
         std::vector<FunctionInstance> newProgram;
         OutputHandler* outputHandler;
+        int counter = 0;
 
         const double percentageCutOff = 90;
 
@@ -49,20 +50,27 @@ namespace functionanalysis{
                     }else{
                         tempSafe = i;
                     }
+                }else{
+                    tempSafe = checkIfADeclarationMatches(set.at(i), oldFunc) ? i : tempSafe;
                 }
             }
 
             return tempSafe;
         }
 
-        int countFunctions(const std::vector<FunctionInstance>& set, const FunctionInstance& func){
+        pair<int,int> countFunctions(const std::vector<FunctionInstance>& set, const FunctionInstance& func){
             int counter=0;
-            for(const auto & i : set){
-                if(isFunctionOverloaded(i, func)){
+            int found=-1;
+            for(int i=0;i<set.size();i++){
+                if(isFunctionOverloaded(set.at(i), func)){
                     counter++;
+                    found = i;
                 }
             }
-            return counter;
+            if(counter == 1){
+                return make_pair(counter,found);
+            }
+            return make_pair(counter,-1);
         }
 
     public:
@@ -78,7 +86,13 @@ namespace functionanalysis{
             int i = 0;
             //for (auto const &func: oldProgram) {
             while (i < oldProgram.size()) {
+                counter++;
+
                 FunctionInstance func = oldProgram.at(i);
+
+                if(counter % 100 == 0){
+                    errs() << "Function " << counter << " of " << oldProgram.size() << "\n";
+                }
 
                 if (func.scope == "private" && !includePrivate) {
                     i++;
@@ -90,8 +104,8 @@ namespace functionanalysis{
                     i++;
                     continue;
                 }
-                auto test = countFunctions(newProgram, func);
-                if (countFunctions(newProgram, func) <= 0) {
+                auto count = countFunctions(newProgram, func);
+                if (count.first <= 0) {
                     outputHandler->initialiseFunctionInstance(func);
                     auto bodyStatus = findBody(func, docEnabled);
                     // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
@@ -119,9 +133,9 @@ namespace functionanalysis{
                     }
                     outputHandler->endOfCurrentFunction();
                     ++i;
-                } else if (countFunctions(newProgram, func) == 1) {
+                } else if (count.first == 1) {
                     outputHandler->initialiseFunctionInstance(func);
-                    FunctionInstance newFunc = newProgram.at(findFunction(newProgram, func));
+                    FunctionInstance newFunc = newProgram.at(count.second);
                     compareFunctionHeader(func, newFunc, false);
                     outputHandler->endOfCurrentFunction();
                     ++i;
@@ -131,6 +145,7 @@ namespace functionanalysis{
             }
         }
     private:
+        // TODO: maybe open up the criterias more to recognize renamed Files + Functions
         std::pair<int, double> findBody(const FunctionInstance &oldFunc, bool docEnabled) {
             int currentHighest = -1;
             double currentHighestValue = -1;
