@@ -81,7 +81,7 @@ public:
     FunctionInstance createFunctionInstance(FunctionDecl* functionDecl){
 
         clockingThing += 1;
-        if(clockingThing % 10 == 0){
+        if(clockingThing % 1000 == 0){
             outs().flush();
             outs() << clockingThing<< "\n";
             outs() << functionDecl->getQualifiedNameAsString()<< "\n";
@@ -298,8 +298,12 @@ public:
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
+
+        if(!getAccessSpelling(functionDecl->getAccess()).empty() && getAccessSpelling(functionDecl->getAccess()) != "public"){
+            return true;
+        }
+
         FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
-        auto tack = FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str();
         auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
         if(std::find(files.begin(), files.end(), filename) == files.end()){
             return true;
@@ -307,11 +311,12 @@ public:
 
         if(!functionDecl->isThisDeclarationADefinition()){
             if(functionDecl->isDefined()){
-                auto functionInstance = createFunctionInstance(functionDecl);
                 if(auto position = findFunctionInstance(program, functionDecl->getDefinition()->getQualifiedNameAsString(),
                                         getFunctionDeclFilename(functionDecl, Context, dir)) != -1){
+                    auto functionInstance = createFunctionInstance(functionDecl);
                     program->at(position).declarations.push_back(functionInstance);
                 }else{
+                    auto functionInstance = createFunctionInstance(functionDecl);
                     auto definition = createFunctionInstance(functionDecl->getDefinition());
                     definition.declarations.push_back(functionInstance);
                     program->push_back(definition);
@@ -321,9 +326,9 @@ public:
                 //program->push_back(functionInstance);
             }
         }else{
-            auto functionInstance = createFunctionInstance(functionDecl);
             if(findFunctionInstance(program, functionDecl->getDefinition()->getQualifiedNameAsString(),
                                     getFunctionDeclFilename(functionDecl, Context, dir)) == -1){
+                auto functionInstance = createFunctionInstance(functionDecl);
                 program->push_back(functionInstance);
             }
         }
@@ -593,6 +598,7 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
 }
 
 std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<variableanalysis::VariableInstance>& variables){
+    clockingThing = 0;
     std::vector<variableanalysis::VariableInstance> output;
     std::vector<variableanalysis::VariableInstance> usedDefinitions;
     for (auto &item: variables){
@@ -613,6 +619,9 @@ std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<v
     // delete all the declarations from the list
     for (auto & variable : variables)
     {
+        if(clockingThing++%500==0){
+            outs()<<clockingThing<<"\n";
+        }
         // adds definitions to the output
         if (!(variable.isDefinition && std::find_if(usedDefinitions.begin(), usedDefinitions.end(),[variables, &variable](const variableanalysis::VariableInstance& var){return variable.qualifiedName == var.qualifiedName;})!=usedDefinitions.end())) {
             output.push_back(variable);
@@ -822,9 +831,11 @@ int main(int argc, const char **argv) {
     //oldProgram = assignDeclarations(oldProgram);
     //newProgram = assignDeclarations(newProgram);
 
+    // TODO: and i fear, same here
     oldProgram = assignSpecializations(oldProgram);
     newProgram = assignSpecializations(newProgram);
 
+    // TODO: same problem as the function equivalent, it takes way to long..
     oldVariables = assignDeclarations(oldVariables);
     newVariables = assignDeclarations(newVariables);
 
@@ -834,15 +845,15 @@ int main(int argc, const char **argv) {
     }else{
         outputHandler = new ConsoleOutputHandler();
     }
-    outs()<<"The objectanalysis started\n";
+    outs()<<"The objectanalysis started with "<< oldObjects.size() << "objects \n";
     // Analysing Objects
     objectanalysis::ObjectAnalyser objectAnalyser = objectanalysis::ObjectAnalyser(oldObjects, newObjects, outputHandler);
     objectAnalyser.compareObjects();
-    outs()<<"The functionanalysis started\n";
+    outs()<<"The functionanalysis started " << oldProgram.size() << " funcs \n";
     // Analysing Functions
     FunctionAnalyser analyser = FunctionAnalyser(oldProgram, newProgram, outputHandler);
     analyser.compareVersionsWithDoc(docEnabled, outputPrivateFunctions);
-    outs()<<"The variableanalysis started\n";
+    outs()<<"The variableanalysis started " << oldVariables.size() << " variables \n";
     // Analysing Variables
     variableanalysis::VariableAnalyser variableAnalyser = variableanalysis::VariableAnalyser(oldVariables, newVariables, outputHandler);
     variableAnalyser.compareVariables();
