@@ -4,7 +4,7 @@
 #include "header/HelperFunctions.h"
 #include "header/OutputHandler.h"
 #include <vector>
-
+#include "omp.h"
 
 using namespace llvm;
 using namespace functionanalysis;
@@ -45,6 +45,9 @@ namespace functionanalysis{
             for(int i=0;i<set.size();i++){
                 if(set.at(i).qualifiedName == oldFunc.qualifiedName && set.at(i).filename == oldFunc.filename){
                     // prefer definitions to declarations if one is found
+                    if(oldFunc.isDeclaration && set.at(i).isDeclaration){
+                        return i;
+                    }
                     if(!set.at(i).isDeclaration){
                         return i;
                     }else{
@@ -73,6 +76,37 @@ namespace functionanalysis{
             return make_pair(counter,-1);
         }
 
+        std::vector<std::vector<FunctionInstance>> separateOverloadedFunctions(std::vector<FunctionInstance>& set){
+            std::vector<std::vector<FunctionInstance>> result;
+            int i=0;
+            while (i < set.size()){
+                std::vector<FunctionInstance> overloadedFunctionInstances;
+                int j=0;
+                while (j < set.size()){
+                    if(i == j) {
+                        j++;
+                        continue;
+                    }
+                    if(isFunctionOverloaded(set.at(i), set.at(j))){
+                        overloadedFunctionInstances.push_back(set.at(j));
+                        set.erase(set.begin()+j);
+                    }else{
+                        j++;
+                    }
+                }
+                if(!overloadedFunctionInstances.empty()){
+                    overloadedFunctionInstances.push_back(set.at(i));
+                    set.erase(set.begin()+i);
+                    result.push_back(overloadedFunctionInstances);
+                }else {
+                    i++;
+                }
+            }
+            outs() << "Found " << result.size() << " overloaded functions\n";
+            outs() << set.size() << " non overloaded funcs left\n";
+            return result;
+        }
+
     public:
         FunctionAnalyser(const std::vector<FunctionInstance>& oldProgram,
                          const std::vector<FunctionInstance>& newProgram,
@@ -83,29 +117,37 @@ namespace functionanalysis{
         }
 
         void compareVersionsWithDoc(bool docEnabled, bool includePrivate) {
-            int i = 0;
-            //for (auto const &func: oldProgram) {
-            while (i < oldProgram.size()) {
-                counter++;
 
+            auto overloadedFunctions = separateOverloadedFunctions(oldProgram);
+
+            //omp_set_num_threads(10);
+            //for (auto const &func: oldProgram) {
+            //#pragma omp parallel for default(none) shared(docEnabled, includePrivate, counter, outputHandler) private(oldProgram, newProgram)
+            for(int i=0;i<oldProgram.size();i++) {
+                counter++;
+                if(counter % 2000 == 0){
+                    outs() << "Analysed " << counter << " functions\n";
+                }
                 FunctionInstance func = oldProgram.at(i);
 
-                if(counter % 100 == 0){
-                    errs() << "Function " << counter << " of " << oldProgram.size() << "\n";
+                // TODO: separate declaration handling!
+                if(func.isDeclaration){
+                    //i++;
+                    //continue;
                 }
 
                 if (func.scope == "private" && !includePrivate) {
-                    i++;
+                    //i++;
                     continue;
                 }
 
                 // skip this function if the old instance was private, because it couldn't have been used by anyone
                 if (func.name == "main") {
-                    i++;
+                    //i++;
                     continue;
                 }
-                auto count = countFunctions(newProgram, func);
-                if (count.first <= 0) {
+                auto index = findFunction(newProgram, func);
+                if (index == -1) {
                     outputHandler->initialiseFunctionInstance(func);
                     auto bodyStatus = findBody(func, docEnabled);
                     // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
@@ -116,7 +158,6 @@ namespace functionanalysis{
                         FunctionInstance newFunc = newProgram.at(bodyStatus.first);
                         if (newFunc.name != func.name) {
                             // further checks on the Header to ensure, that this is indeed a renamed function
-                            if (!compareFunctionHeader(func, newFunc, true)) {
                                 if (docEnabled) {
                                     outputHandler->outputRenamedFunction(newFunc, func.name,
                                                                          std::to_string(bodyStatus.second));
@@ -124,24 +165,25 @@ namespace functionanalysis{
                                     // perfect match, so using 100 is accurate
                                     outputHandler->outputRenamedFunction(newFunc, func.name, "100");
                                 }
-                            } else {
-                                outputHandler->outputDeletedFunction(func, false);
-                            }
                         } else {
                             compareFunctionHeader(func, newFunc, false);
                         }
                     }
                     outputHandler->endOfCurrentFunction();
-                    ++i;
-                } else if (count.first == 1) {
+                    //++i;
+                } else{
                     outputHandler->initialiseFunctionInstance(func);
-                    FunctionInstance newFunc = newProgram.at(count.second);
+                    FunctionInstance newFunc = newProgram.at(index);
                     compareFunctionHeader(func, newFunc, false);
                     outputHandler->endOfCurrentFunction();
-                    ++i;
-                } else {
-                    compareOverloadedFunctionHeader(func);
+                    //++i;
                 }
+            }
+
+            // overloaded handling
+            for(auto const& overloadedFunctionSet : overloadedFunctions){
+                FunctionInstance func = overloadedFunctionSet.at(0);
+                compareOverloadedFunctionHeader(func, overloadedFunctionSet);
             }
         }
     private:
@@ -155,17 +197,19 @@ namespace functionanalysis{
                     continue;
                 }
                 if (docEnabled) {
-                    double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
-
                     // prioritize functions that have the exact same name in the same file
-                    if (oldFunc.name == newFunc.name && percentageDifference >= percentageCutOff && oldFunc.filename == newFunc.filename) {
-                        return std::make_pair(i, percentageDifference);
+                    if (oldFunc.name == newFunc.name && oldFunc.filename == newFunc.filename) {
+                        double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
+                        if(percentageDifference >= percentageCutOff)
+                            return std::make_pair(i, percentageDifference);
                     }
-
-                    if (percentageDifference >= percentageCutOff) {
-                        if (percentageDifference > currentHighestValue) {
-                            currentHighestValue = percentageDifference;
-                            currentHighest = i;
+                    if (!compareFunctionHeader(oldFunc, newFunc, true)) {
+                        double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
+                        if (percentageDifference >= percentageCutOff) {
+                            if (percentageDifference > currentHighestValue) {
+                                currentHighestValue = percentageDifference;
+                                currentHighest = i;
+                            }
                         }
                     }
                 } else {
@@ -214,44 +258,8 @@ namespace functionanalysis{
             return output;
         }
 
-        bool compareOverloadedFunctionHeader(const FunctionInstance &func) {
+        bool compareOverloadedFunctionHeader(const FunctionInstance &func, const std::vector<FunctionInstance>& oldOverloadedInstances) {
             std::vector<FunctionInstance> overloadedFunctions;
-            std::vector<FunctionInstance> oldOverloadedInstances;
-
-            bool matchFound = false;
-            int i = 0;
-            while (i < oldProgram.size()) {
-                matchFound = false;
-                // check if there is an exact match
-                int j = 0;
-                while (j < newProgram.size()) {
-                    if (newProgram.at(j).isDeclaration) {
-                        j++;
-                        continue;
-                    }
-
-                    // function header is an exact match
-                    if (oldProgram.at(i).qualifiedName == func.qualifiedName &&
-                        isFunctionOverloaded(oldProgram.at(i), newProgram.at(j))
-                        && oldProgram.at(i).returnType == newProgram.at(j).returnType &&
-                        !compareParams(oldProgram.at(i), newProgram.at(j), true)) {
-                        outputHandler->initialiseFunctionInstance(oldProgram.at(i));
-                        // proceed normally
-                        bool analysisResult = compareFunctionHeaderExceptParams(oldProgram.at(i), newProgram.at(j),
-                                                                                false);
-                        oldProgram.erase(oldProgram.begin() + i);
-                        newProgram.erase(newProgram.begin() + j);
-                        matchFound = true;
-                        outputHandler->endOfCurrentFunction();
-                        break;
-                    } else {
-                        j++;
-                    }
-                }
-                if (!matchFound) {
-                    i++;
-                }
-            }
 
             for (auto &item: newProgram) {
                 if (isFunctionOverloaded(func, item)) {
@@ -259,28 +267,31 @@ namespace functionanalysis{
                 }
             }
 
-            i = 0;
-            while (i < oldProgram.size()) {
-                if (isFunctionOverloaded(oldProgram.at(i), func)) {
-                    oldOverloadedInstances.push_back(oldProgram.at(i));
-                    oldProgram.erase(oldProgram.begin() + i);
-                } else {
-                    i++;
-                }
-            }
             for (const auto &item: oldOverloadedInstances) {
                 outputHandler->initialiseFunctionInstance(item);
+
                 if (overloadedFunctions.empty()) {
                     outputHandler->outputDeletedFunction(func, true);
                     outputHandler->endOfCurrentFunction();
                     continue;
                 }
 
+                bool found = false;
+                for (const auto &newFunc: overloadedFunctions){
+                    if(item.equals(newFunc)){
+                        compareParams(item, newFunc, false);
+                        compareFunctionHeaderExceptParams(item, newFunc, false);
+                        found = true;
+                    }
+                }
+                if(found) {
+                   continue;
+                }
+
                 // if there isn't an exact match, find the nearest match
                 auto closest = findBody(item, overloadedFunctions);
                 if (closest.second != -1) {
                     // there is another function that fits, proceed to compare it normally
-                    outputHandler->outputOverloadedDisclaimer(item, std::to_string(closest.second));
                     compareParams(item, closest.first, false);
                     compareFunctionHeaderExceptParams(item, closest.first, false);
                     // TODO: block for multiple old functions to be mapped to a single new function? (i.e. delete the here found function as well)

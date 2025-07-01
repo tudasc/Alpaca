@@ -27,6 +27,7 @@ namespace functionanalysis{
         bool isConst;
         bool isTemplateDecl;
         bool isTemplateSpec;
+        bool isOverloaded;
         std::vector<FunctionInstance> templateSpecializations;
         // [type, [name, default value]]
         std::vector<std::pair<std::string, std::pair<std::string, std::string>>> templateParams;
@@ -66,7 +67,7 @@ namespace functionanalysis{
             // check if the params match
             if (params.size() == decl.params.size()) {
                 for (int i = 0; i < params.size(); ++i) {
-                    if (params.at(i) != decl.params.at(i)) {
+                    if (params.at(i).first != decl.params.at(i).first) {
                         return false;
                     }
                 }
@@ -76,7 +77,7 @@ namespace functionanalysis{
 
             // check if the rest of the functions match (qualified name check includes the location check)
             return (decl.qualifiedName == qualifiedName && decl.returnType == returnType && decl.scope == scope &&
-                    storageClass == decl.storageClass);
+                    storageClass == decl.storageClass && memberFunctionSpecifier == decl.memberFunctionSpecifier);
         }
 
         [[nodiscard]] bool equals(FunctionInstance func) const{

@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 #wir benötigen clang als library
 find_package(Clang REQUIRED)
+find_package(OpenMP REQUIRED)
 #version sollte 14.0.X sein
 message(STATUS "Found LLVM/Clang version " ${LLVM_VERSION})
 
@@ -25,6 +26,7 @@ add_definitions(${LLVM_DEFINITIONS})
 add_definitions(${CLANG_DEFINITIONS})
 
 set(LLVM_LINK_COMPONENTS support)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
 
 #wir wollen eine ausführbare datei erellen, die APIAnalysis heißt
 #und aus der Datei APIAnalysis.cpp gebaut wird
