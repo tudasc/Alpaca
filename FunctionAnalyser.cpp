@@ -16,11 +16,15 @@ namespace functionanalysis{
         std::vector<FunctionInstance> oldProgram;
         std::vector<FunctionInstance> newProgram;
         OutputHandler* outputHandler;
+        std::vector<std::vector<FunctionInstance>> newOverloadedFunctions;
         int counter = 0;
 
         const double percentageCutOff = 90;
 
         bool checkIfADeclarationMatches(const FunctionInstance& oldDecl, const FunctionInstance& newDecl){
+            if(oldDecl.filename == newDecl.filename){
+                return true;
+            }
             for (const auto &oldItem: oldDecl.declarations){
                 for (const auto &newItem: newDecl.declarations){
                     if(oldItem.filename == newItem.filename){
@@ -119,6 +123,10 @@ namespace functionanalysis{
         void compareVersionsWithDoc(bool docEnabled, bool includePrivate) {
 
             auto overloadedFunctions = separateOverloadedFunctions(oldProgram);
+            newOverloadedFunctions = separateOverloadedFunctions(newProgram);
+
+            outs()<<"there are " << overloadedFunctions.size() << " overloaded functions\n";
+            outs()<<"there are " << newOverloadedFunctions.size() << " new overloaded functions\n";
 
             //omp_set_num_threads(10);
             //for (auto const &func: oldProgram) {
@@ -130,10 +138,14 @@ namespace functionanalysis{
                 }
                 FunctionInstance func = oldProgram.at(i);
 
+                if(func.qualifiedName == "component_query"){
+                    outs() << "Found component_query\n";
+                }
+
                 // TODO: separate declaration handling!
                 if(func.isDeclaration){
                     //i++;
-                    //continue;
+                    continue;
                 }
 
                 if (func.scope == "private" && !includePrivate) {
@@ -182,6 +194,9 @@ namespace functionanalysis{
 
             // overloaded handling
             for(auto const& overloadedFunctionSet : overloadedFunctions){
+                if(overloadedFunctionSet.at(0).qualifiedName == "component_query"){
+                    outs() << "Found component_query\n";
+                }
                 FunctionInstance func = overloadedFunctionSet.at(0);
                 compareOverloadedFunctionHeader(func, overloadedFunctionSet);
             }
@@ -261,11 +276,15 @@ namespace functionanalysis{
         bool compareOverloadedFunctionHeader(const FunctionInstance &func, const std::vector<FunctionInstance>& oldOverloadedInstances) {
             std::vector<FunctionInstance> overloadedFunctions;
 
-            for (auto &item: newProgram) {
-                if (isFunctionOverloaded(func, item)) {
-                    overloadedFunctions.push_back(item);
+            for (auto &item: newOverloadedFunctions) {
+                for (const auto &funcs: item){
+                    if(isFunctionOverloaded(func, funcs)){
+                        overloadedFunctions = item;
+                        break;
+                    }
                 }
             }
+
 
             for (const auto &item: oldOverloadedInstances) {
                 outputHandler->initialiseFunctionInstance(item);

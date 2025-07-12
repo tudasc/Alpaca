@@ -7,6 +7,7 @@
 #include <llvm/Support/CommandLine.h>
 
 #include "include/cxxopts.hpp"
+#include "omp.h"
 
 #include "header/HelperFunctions.h"
 #include "header/FunctionAnalyser.h"
@@ -574,6 +575,7 @@ public:
     explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string>& files, std::map<std::string, FunctionInstance>* mapOfDeclarations) : apiAnalysisVisitor(Context, program, dir, var, objects, files, mapOfDeclarations){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
+        //outs()<<"File is: " + filesystem::current_path().string()<<"\n";
         apiAnalysisVisitor.TraverseDecl(Context.getTranslationUnitDecl());
     }
 
@@ -827,11 +829,17 @@ int main(int argc, const char **argv) {
     if(result.count("oldCD")){
         std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
         oldCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);
+        oldFiles.clear();
+        oldFiles = oldCD->getAllFiles();
+        outs()<<oldFiles.size();
     }
 
     if(result.count("newCD")){
         std::string errorMessage = "Could not load the specified new compilation Database, trying to find one in the project files\n";
         newCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["newCD"].as<std::string>()).string(), errorMessage);
+        newFiles.clear();
+        newFiles = newCD->getAllFiles();
+        outs()<<newFiles.size();
     }
 
     std::string errorMessage="No Compilation database could be found in the old directory, loading the standard empty compilation database";
@@ -856,20 +864,7 @@ int main(int argc, const char **argv) {
         newCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
     }
 
-    ClangTool oldTool(*oldCD,
-                      oldFiles);
-
-    if(result.count("extra-args")) {
-        CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
-        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
-        oldTool.appendArgumentsAdjuster(adjuster);
-    }
-
-    if(result.count("extra-args-old")) {
-        CommandLineArguments args = result["extra-args-old"].as<std::vector<std::string>>();
-        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
-        oldTool.appendArgumentsAdjuster(adjuster);
-    }
+    //ClangTool oldTool(*oldCD,oldFiles);
 
     std::vector<std::string> relativeListOfOldFiles;
     std::vector<std::string> relativeListOfNewFiles;
@@ -885,15 +880,67 @@ int main(int argc, const char **argv) {
         relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
     }
 
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations).get());
+    for (const auto &item: oldFiles){
+        ClangTool oldTool = ClangTool(*oldCD,
+                            std::vector<std::string>{item});
+        if(result.count("extra-args")) {
+            CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
+            auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+            oldTool.appendArgumentsAdjuster(adjuster);
+        }
 
+        if(result.count("extra-args-old")) {
+            CommandLineArguments args = result["extra-args-old"].as<std::vector<std::string>>();
+            auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+            oldTool.appendArgumentsAdjuster(adjuster);
+        }
+        oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations).get());
+    }
+    /*
+    for (int i=0; i<oldFiles.size(); i++){
+        if(oldFiles.at(i) == "/home/paul/Downloads/openmpi-4.1.52/opal/mca/pmix/pmix3x/pmix/src/threads/thread.c"){
+            outs()<<"found the file\n";
+            outs()<<oldFiles.at(i+1);
+        }
+    }
+
+    ClangTool oldTool = ClangTool(*oldCD,
+                                  oldFiles);
+    if(result.count("extra-args")) {
+        CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
+        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+        oldTool.appendArgumentsAdjuster(adjuster);
+    }
+
+    if(result.count("extra-args-old")) {
+        CommandLineArguments args = result["extra-args-old"].as<std::vector<std::string>>();
+        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+        oldTool.appendArgumentsAdjuster(adjuster);
+    }
+    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations).get());
+    */
     insertUndefinedDeclarations(&oldProgram, &mapOfDeclarations);
 
     mapOfDeclarations.clear();
 
-    ClangTool newTool(*newCD,
-                   newFiles);
+    //ClangTool newTool(*newCD,newFiles);
+    for (const auto &item: newFiles){
+        ClangTool newTool = ClangTool(*newCD,
+                                      std::vector<std::string>{item});
+        if(result.count("extra-args")) {
+            CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
+            auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+            newTool.appendArgumentsAdjuster(adjuster);
+        }
 
+        if(result.count("extra-args-new")) {
+            CommandLineArguments args = result["extra-args-new"].as<std::vector<std::string>>();
+            auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
+            newTool.appendArgumentsAdjuster(adjuster);
+        }
+        newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles, &mapOfDeclarations).get());
+    }
+    /*
     if(result.count("extra-args")) {
         CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
         auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
@@ -907,7 +954,7 @@ int main(int argc, const char **argv) {
     }
 
     newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles, &mapOfDeclarations).get());
-
+    */
     insertUndefinedDeclarations(&newProgram, &mapOfDeclarations);
 
     outs()<<"All functions, objects and variables were processed\n";

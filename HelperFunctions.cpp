@@ -11,11 +11,11 @@ namespace fs = std::filesystem;
 
 namespace helper {
 
-    std::vector<std::string> acceptedFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx",".cppm"};
+    std::vector<std::string> acceptedFileEndings{".cpp",".c",".h",".hpp",".C",".cc",".CPP",".cp",".cxx"};
 
     void listFiles(const std::string &path, std::vector<std::string>* listOfFiles, const std::vector<std::string>* excludedFiles){
         if(!fs::is_directory(path)){
-            listOfFiles->push_back(fs::canonical(path));
+            listOfFiles->push_back(fs::absolute(path));
             return;
         }
         fs::recursive_directory_iterator it(path);
@@ -48,8 +48,7 @@ namespace helper {
             }) != excludedFiles->end() || !(std::find(acceptedFileEndings.begin(), acceptedFileEndings.end(), fs::path(it->path()).extension()) != acceptedFileEndings.end())){
                 continue;
             }
-
-            listOfFiles->push_back(fs::canonical(it->path()));
+            listOfFiles->push_back(fs::absolute(it->path()));
         }
     }
 
