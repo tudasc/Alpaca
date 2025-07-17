@@ -275,12 +275,17 @@ namespace functionanalysis{
 
         bool compareOverloadedFunctionHeader(const FunctionInstance &func, const std::vector<FunctionInstance>& oldOverloadedInstances) {
             std::vector<FunctionInstance> overloadedFunctions;
-
-            for (auto &item: newOverloadedFunctions) {
-                for (const auto &funcs: item){
-                    if(isFunctionOverloaded(func, funcs)){
-                        overloadedFunctions = item;
-                        break;
+            for(int x=0;x<oldOverloadedInstances.size();x++) {
+                for (int i = 0; i < newOverloadedFunctions.size(); i++) {
+                    if(oldOverloadedInstances.at(x).qualifiedName != newOverloadedFunctions.at(i).at(0).qualifiedName) {
+                        continue;
+                    }
+                    for (int j = 0; j < newOverloadedFunctions.at(i).size(); j++) {
+                        if (oldOverloadedInstances.at(x).qualifiedName == newOverloadedFunctions.at(i).at(j).qualifiedName &&
+                                oldOverloadedInstances.at(x).filename == newOverloadedFunctions.at(i).at(j).filename) {
+                            overloadedFunctions = newOverloadedFunctions.at(i);
+                            break;
+                        }
                     }
                 }
             }
