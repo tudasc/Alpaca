@@ -58,7 +58,7 @@ namespace functionanalysis{
                         tempSafe = i;
                     }
                 }else{
-                    tempSafe = checkIfADeclarationMatches(set.at(i), oldFunc) ? i : tempSafe;
+                    tempSafe = checkIfADeclarationMatches(set.at(i), oldFunc) && oldFunc.name == set.at(i).name ? i : tempSafe;
                 }
             }
 
@@ -91,6 +91,7 @@ namespace functionanalysis{
                         j++;
                         continue;
                     }
+
                     if(isFunctionOverloaded(set.at(i), set.at(j))){
                         overloadedFunctionInstances.push_back(set.at(j));
                         set.erase(set.begin()+j);
@@ -137,10 +138,6 @@ namespace functionanalysis{
                     outs() << "Analysed " << counter << " functions\n";
                 }
                 FunctionInstance func = oldProgram.at(i);
-
-                if(func.qualifiedName == "component_query"){
-                    outs() << "Found component_query\n";
-                }
 
                 // TODO: separate declaration handling!
                 if(func.isDeclaration){

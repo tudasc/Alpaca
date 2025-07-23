@@ -61,7 +61,7 @@ int findFunctionInstance(std::vector<FunctionInstance>* program, const string& f
 string getFunctionDeclFilename(FunctionDecl* functionDecl, clang::ASTContext *Context, const string& dir){
     FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
     auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
-    return filename;
+    return filename.string();
 }
 
 vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* functionDecl, clang::ASTContext *Context){
@@ -254,6 +254,10 @@ public:
         functionInstance.fullHeader = entireHeader;
 
         functionInstance.declarations.push_back(functionInstance);
+
+        if(functionInstance.qualifiedName == "a2av_sched_linear"){
+            outs() << "a2av_sched_linear\n";
+        }
 
         return functionInstance;
     }
@@ -602,7 +606,7 @@ public:
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
-        Compiler.getDiagnostics().setClient(new clang::IgnoringDiagConsumer(), true);
+        //Compiler.getDiagnostics().setClient(new clang::IgnoringDiagConsumer(), true);
         return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj, files, mapOfDeclarations);
     }
 
@@ -733,6 +737,12 @@ void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std:
     for (auto &def : *definitions) {
         for (const auto &decl: def.declarations){
             declarations->erase(decl.filePosition);
+        }
+        // some definitions don't have a filename, so the filename of the first declaration is used (in the MPI dataset it were only 7 out of about 10000 and I didn't find any similarity between them..)
+        if(def.filename.empty()){
+            if(def.declarations.size() > 1){
+                def.filename = def.declarations.at(1).filename;
+            }
         }
     }
 
@@ -898,6 +908,7 @@ int main(int argc, const char **argv) {
         }
         oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations).get());
     }
+
     /*
     for (int i=0; i<oldFiles.size(); i++){
         if(oldFiles.at(i) == "/home/paul/Downloads/openmpi-4.1.52/opal/mca/pmix/pmix3x/pmix/src/threads/thread.c"){
