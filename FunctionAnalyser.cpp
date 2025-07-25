@@ -21,7 +21,7 @@ namespace functionanalysis{
 
         const double percentageCutOff = 90;
 
-        bool checkIfADeclarationMatches(const FunctionInstance& oldDecl, const FunctionInstance& newDecl){
+        static bool checkIfADeclarationMatches(const FunctionInstance& oldDecl, const FunctionInstance& newDecl){
             if(oldDecl.filename == newDecl.filename){
                 return true;
             }
@@ -142,7 +142,7 @@ namespace functionanalysis{
                 // TODO: separate declaration handling!
                 if(func.isDeclaration){
                     //i++;
-                    continue;
+                    //continue;
                 }
 
                 if (func.scope == "private" && !includePrivate) {
@@ -155,6 +155,7 @@ namespace functionanalysis{
                     //i++;
                     continue;
                 }
+
                 auto index = findFunction(newProgram, func);
                 if (index == -1) {
                     outputHandler->initialiseFunctionInstance(func);
@@ -162,6 +163,11 @@ namespace functionanalysis{
                     // only output a renaming, if the similar function is not private, because knowing about a private function is not useful to the user
                     if (bodyStatus.first == -1) {
                         outputHandler->outputDeletedFunction(func, false);
+                        for (const auto &item: func.declarations){
+                            if(!item.isDeclaration || func.isDeclaration) continue;
+                            // the entire function is gone, this includes the decls
+                            outputHandler->outputDeletedFunction(item, false);
+                        }
                     } else {
                         // use the function found during the statistical functionanalysis
                         FunctionInstance newFunc = newProgram.at(bodyStatus.first);
@@ -215,6 +221,7 @@ namespace functionanalysis{
                         if(percentageDifference >= percentageCutOff)
                             return std::make_pair(i, percentageDifference);
                     }
+                    // TODO: make the check less strict, so it can change renames AND other things, would be better to increase strictness of the matcher (i.e. minimum of characters, etc.)
                     if (!compareFunctionHeader(oldFunc, newFunc, true)) {
                         double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
                         if (percentageDifference >= percentageCutOff) {
@@ -293,6 +300,11 @@ namespace functionanalysis{
 
                 if (overloadedFunctions.empty()) {
                     outputHandler->outputDeletedFunction(func, true);
+                    for (const auto &item: func.declarations){
+                        if(!item.isDeclaration || func.isDeclaration) continue;
+                        // the entire function is gone, this includes the decls
+                        outputHandler->outputDeletedFunction(item, true);
+                    }
                     outputHandler->endOfCurrentFunction();
                     continue;
                 }
@@ -318,6 +330,11 @@ namespace functionanalysis{
                     // TODO: block for multiple old functions to be mapped to a single new function? (i.e. delete the here found function as well)
                 } else {
                     outputHandler->outputDeletedFunction(item, true);
+                    for (const auto &decls: item.declarations){
+                        if(!item.isDeclaration || func.isDeclaration) continue;
+                        // the entire function is gone, this includes the decls
+                        outputHandler->outputDeletedFunction(decls, true);
+                    }
                 }
                 outputHandler->endOfCurrentFunction();
             }
@@ -392,9 +409,13 @@ namespace functionanalysis{
             if(func.isTemplateDecl && newFunc.isTemplateDecl){
                 output += compareFunctionTemplates(func, newFunc, internalUse);
             }else if(func.isTemplateDecl && !newFunc.isTemplateDecl){
-                outputHandler->outputTemplateIsNowFunction(func, newFunc);
+                if(!internalUse) {
+                    outputHandler->outputTemplateIsNowFunction(func, newFunc);
+                }
             }else if(!func.isTemplateDecl && newFunc.isTemplateDecl){
-                outputHandler->outputFunctionIsNowTemplate(func, newFunc);
+                if(!internalUse) {
+                    outputHandler->outputFunctionIsNowTemplate(func, newFunc);
+                }
             }
 
             // TODO: Evaluate which of these should be included in the Header Checks

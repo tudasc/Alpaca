@@ -91,6 +91,7 @@ string getLocation(FunctionDecl* functionDecl, const string& dir){
     auto startOfLoc = relative.substr(0, relative.find_last_of(':')).find_last_of(':');
     auto loc = relative.substr(startOfLoc, relative.size());
     relative = relative.substr(0, startOfLoc);
+
     return filesystem::relative(filesystem::path(relative), dir).string() + loc;
 }
 
@@ -255,14 +256,12 @@ public:
 
         functionInstance.declarations.push_back(functionInstance);
 
-        if(functionInstance.qualifiedName == "a2av_sched_linear"){
-            outs() << "a2av_sched_linear\n";
-        }
 
         return functionInstance;
     }
 
     bool VisitRecordDecl(clang::RecordDecl *recordDecl){
+        return true;
         if(!Context->getSourceManager().isInMainFile(recordDecl->getLocation())){
             return true;
         }
@@ -324,6 +323,7 @@ public:
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
+        return true;
         if(!getAccessSpelling(functionDecl->getAccess()).empty() && getAccessSpelling(functionDecl->getAccess()) != "public"){
             return true;
         }
@@ -348,6 +348,11 @@ public:
                     program->at(position).declarations.push_back(functionInstance);
                 }else{
                     auto definition = createFunctionInstance(functionDecl->getDefinition());
+                    // some definition filenames are empty (about 7 out of 11000 and no idea why), so the filename is set to the declaration filename
+                    if(definition.filename.empty()){
+                        definition.filename = functionInstance.filename;
+                        definition.filePosition = functionInstance.filename + definition.filePosition;
+                    }
                     definition.declarations.push_back(functionInstance);
                     program->push_back(definition);
                 }
@@ -662,7 +667,7 @@ std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<v
         // find all instances of this particular qualified name
         for (auto &otherItem : variables)
         {
-            if(otherItem.qualifiedName != item.qualifiedName || item.filename == otherItem.filename){
+            if(otherItem.qualifiedName != item.qualifiedName || item.filename != otherItem.filename){
                 continue;
             }
             item.definitions.push_back(otherItem);
@@ -737,12 +742,6 @@ void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std:
     for (auto &def : *definitions) {
         for (const auto &decl: def.declarations){
             declarations->erase(decl.filePosition);
-        }
-        // some definitions don't have a filename, so the filename of the first declaration is used (in the MPI dataset it were only 7 out of about 10000 and I didn't find any similarity between them..)
-        if(def.filename.empty()){
-            if(def.declarations.size() > 1){
-                def.filename = def.declarations.at(1).filename;
-            }
         }
     }
 
@@ -974,13 +973,11 @@ int main(int argc, const char **argv) {
     outs()<<"In total "<<oldProgram.size()<<" functions, "<<oldObjects.size()<<" objects and "<<oldVariables.size()<<" variables were found in the old version of the project\n";
     outs()<<"In total "<<newProgram.size()<<" functions, "<<newObjects.size()<<" objects and "<<newVariables.size()<<" variables were found in the new version of the project\n";
 
-    // TODO: and i fear, same here (that rhymes :D)
     oldProgram = assignSpecializations(oldProgram);
     newProgram = assignSpecializations(newProgram);
 
-    // TODO: same problem as the function equivalent, it takes way to long..
-    //oldVariables = assignDeclarations(oldVariables);
-    //newVariables = assignDeclarations(newVariables);
+    oldVariables = assignDeclarations(oldVariables);
+    newVariables = assignDeclarations(newVariables);
 
     OutputHandler* outputHandler;
     if(jsonOutput){
@@ -991,7 +988,7 @@ int main(int argc, const char **argv) {
     outs()<<"The objectanalysis started with "<< oldObjects.size() << "objects \n";
     // Analysing Objects
     objectanalysis::ObjectAnalyser objectAnalyser = objectanalysis::ObjectAnalyser(oldObjects, newObjects, outputHandler);
-    //objectAnalyser.compareObjects();
+    objectAnalyser.compareObjects();
     outs()<<"The functionanalysis started " << oldProgram.size() << " funcs \n";
     // Analysing Functions
     FunctionAnalyser analyser = FunctionAnalyser(oldProgram, newProgram, outputHandler);
@@ -999,7 +996,7 @@ int main(int argc, const char **argv) {
     outs()<<"The variableanalysis started " << oldVariables.size() << " variables \n";
     // Analysing Variables
     variableanalysis::VariableAnalyser variableAnalyser = variableanalysis::VariableAnalyser(oldVariables, newVariables, outputHandler);
-    //variableAnalyser.compareVariables();
+    variableAnalyser.compareVariables();
 
     outputHandler->printOut();
 
