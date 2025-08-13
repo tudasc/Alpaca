@@ -3,14 +3,17 @@
 #include "header/HelperFunctions.h"
 #include "header/OutputHandler.h"
 #include "header/CodeMatcher.h"
+#include <llvm/Support/CommandLine.h>
 
 namespace variableanalysis {
 
     class VariableAnalyser{
         std::vector<VariableInstance> oldVariables;
         std::vector<VariableInstance> newVariables;
+        std::vector<VariableInstance> unmatchedOldVariables;
         OutputHandler* outputHandler;
-    int findVariable(const std::vector<VariableInstance>& set, const VariableInstance& variableInstance){
+        int counter=0;
+    static int findVariable(const std::vector<VariableInstance>& set, const VariableInstance& variableInstance){
         // TODO: check if there are more than one variable with the same name and if yes, use the filename as another identifer
         // prioritylist (name has to be the same): qualifiedName > filename > closest match on location
         std::map<int, VariableInstance> priorityMatches;
@@ -55,18 +58,41 @@ namespace variableanalysis {
                     continue;
                 }
 
-                outputHandler->initialiseVariableInstance(oldVar);
                 auto indexInNew = findVariable(newVariables, oldVar);
                 if(indexInNew != -1){
                     VariableInstance newVar = newVariables.at(indexInNew);
+                    if(compareLocation(oldVar, newVar, true)){
+                        unmatchedOldVariables.push_back(oldVar);
+                        continue;
+                    }
+                    outputHandler->initialiseVariableInstance(oldVar);
                     compareMainHeader(oldVar, newVar);
-                    compareLocation(oldVar, newVar);
+                    compareLocation(oldVar, newVar, false);
                     compareQualifiers(oldVar, newVar);
-                    compareDefinitions(oldVar, newVar);
+                    newVariables.erase(newVariables.begin() + indexInNew);
                 }else{
+                    outputHandler->initialiseVariableInstance(oldVar);
                     outputHandler->outputVariableDeleted(oldVar);
                 }
                 outputHandler->endOfCurrentVariable();
+                counter++;
+            }
+
+            for (const auto &oldVar: unmatchedOldVariables){
+                auto indexInNew = findVariable(newVariables, oldVar);
+                if(indexInNew != -1){
+                    VariableInstance newVar = newVariables.at(indexInNew);
+                    outputHandler->initialiseVariableInstance(oldVar);
+                    compareMainHeader(oldVar, newVar);
+                    compareLocation(oldVar, newVar, false);
+                    compareQualifiers(oldVar, newVar);
+                    newVariables.erase(newVariables.begin() + indexInNew);
+                }else{
+                    outputHandler->initialiseVariableInstance(oldVar);
+                    outputHandler->outputVariableDeleted(oldVar);
+                }
+                outputHandler->endOfCurrentVariable();
+                counter++;
             }
         }
 
@@ -78,9 +104,6 @@ namespace variableanalysis {
             if(oldVar.type != newVar.type){
                 outputHandler->outputVariableTypeChange(oldVar, newVar);
             }
-            if(oldVar.defaultValue != newVar.defaultValue){
-                outputHandler->outputVariableDefaultValueChange(oldVar, newVar);
-            }
             if(oldVar.filename != newVar.filename){
                 outputHandler->outputVariableFileChange(oldVar, newVar);
             }
@@ -89,17 +112,19 @@ namespace variableanalysis {
             }
         }
 
-        void compareLocation(const VariableInstance& oldVar, const VariableInstance& newVar){
+        bool compareLocation(const VariableInstance& oldVar, const VariableInstance& newVar, bool internalCheck = false){
             if(oldVar.location.size() != newVar.location.size()){
-                outputHandler->outputVariableLocationChange(oldVar, newVar);
+                if(!internalCheck) outputHandler->outputVariableLocationChange(oldVar, newVar);
+                return true;
             }else{
                  for(int i=0;i<oldVar.location.size();i++){
                     if(oldVar.location.at(i) != newVar.location.at(i)){
-                        outputHandler->outputVariableLocationChange(oldVar, newVar);
-                        break;
+                        if(!internalCheck) outputHandler->outputVariableLocationChange(oldVar, newVar);
+                        return true;
                     }
                 }
             }
+            return false;
         }
 
         void compareQualifiers(const VariableInstance& oldVar, const VariableInstance& newVar){
@@ -124,6 +149,7 @@ namespace variableanalysis {
             }
         }
 
+        /*
         void compareDefinitions(const VariableInstance& oldVar, const VariableInstance& newVar){
             for (const auto &oldDef: oldVar.definitions){
                 bool found = false;
@@ -151,6 +177,7 @@ namespace variableanalysis {
                 }
             }
         }
+         */
 
     };
 

@@ -21,42 +21,24 @@ namespace functionanalysis{
 
         const double percentageCutOff = 90;
 
-        static bool checkIfADeclarationMatches(const FunctionInstance& oldDecl, const FunctionInstance& newDecl){
-            if(oldDecl.filename == newDecl.filename){
-                return true;
-            }
-            for (const auto &oldItem: oldDecl.declarations){
-                for (const auto &newItem: newDecl.declarations){
-                    if(oldItem.filename == newItem.filename){
-                        return true;
-                    }
-                }
-                //if the given FunctionInstances are declarations it has to lack a viable definition which is a separate case
-                if(newDecl.isDeclaration && oldItem.filename == newDecl.filename){
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool isFunctionOverloaded(const FunctionInstance& oldFunc, const FunctionInstance& newFunc){
+        static bool isFunctionOverloaded(const FunctionInstance& oldFunc, const FunctionInstance& newFunc){
             // overloaded Functions have to have the same qualified name (i.e. be in the same namespace) and share at least one declaration position (definitions don´t have to be in the same file) : if one of the declarations is empty, the definition is the declaration
-            return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc, newFunc);
+            return oldFunc.qualifiedName == newFunc.qualifiedName && checkIfADeclarationMatches(oldFunc, newFunc) && oldFunc.filePosition != newFunc.filePosition;
         }
 
-        int findFunction(const std::vector<FunctionInstance>& set, const FunctionInstance& oldFunc){
+        static int findFunction(const std::vector<FunctionInstance>& set, const FunctionInstance& oldFunc){
             int tempSafe = -1;
             for(int i=0;i<set.size();i++){
                 if(set.at(i).qualifiedName == oldFunc.qualifiedName && set.at(i).filename == oldFunc.filename){
                     // prefer definitions to declarations if one is found
                     if(oldFunc.isDeclaration && set.at(i).isDeclaration){
-                        return i;
+                        //return i;
                     }
-                    if(!set.at(i).isDeclaration){
+                    //if(!set.at(i).isDeclaration){
                         return i;
-                    }else{
+                    //}else{
                         tempSafe = i;
-                    }
+                    //}
                 }else{
                     tempSafe = checkIfADeclarationMatches(set.at(i), oldFunc) && oldFunc.name == set.at(i).name ? i : tempSafe;
                 }
@@ -80,7 +62,27 @@ namespace functionanalysis{
             return make_pair(counter,-1);
         }
 
-        std::vector<std::vector<FunctionInstance>> separateOverloadedFunctions(std::vector<FunctionInstance>& set){
+    public:
+
+        static bool checkIfADeclarationMatches(const FunctionInstance& oldDecl, const FunctionInstance& newDecl){
+            if(oldDecl.filename == newDecl.filename){
+                return true;
+            }
+            for (const auto &oldItem: oldDecl.declarations){
+                for (const auto &newItem: newDecl.declarations){
+                    if(oldItem.filename == newItem.filename){
+                        return true;
+                    }
+                }
+                //if the given FunctionInstances are declarations it has to lack a viable definition which is a separate case
+                if(newDecl.isDeclaration && oldItem.filename == newDecl.filename){
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static std::vector<std::vector<FunctionInstance>> separateOverloadedFunctions(std::vector<FunctionInstance>& set){
             std::vector<std::vector<FunctionInstance>> result;
             int i=0;
             while (i < set.size()){
@@ -112,7 +114,6 @@ namespace functionanalysis{
             return result;
         }
 
-    public:
         FunctionAnalyser(const std::vector<FunctionInstance>& oldProgram,
                          const std::vector<FunctionInstance>& newProgram,
                          OutputHandler* outputHandler) {
@@ -139,18 +140,11 @@ namespace functionanalysis{
                 }
                 FunctionInstance func = oldProgram.at(i);
 
-                // TODO: separate declaration handling!
-                if(func.isDeclaration){
-                    //i++;
-                    //continue;
-                }
-
                 if (func.scope == "private" && !includePrivate) {
                     //i++;
                     continue;
                 }
 
-                // skip this function if the old instance was private, because it couldn't have been used by anyone
                 if (func.name == "main") {
                     //i++;
                     continue;
@@ -171,7 +165,7 @@ namespace functionanalysis{
                     } else {
                         // use the function found during the statistical functionanalysis
                         FunctionInstance newFunc = newProgram.at(bodyStatus.first);
-                        if (newFunc.name != func.name) {
+                         if (newFunc.name != func.name) {
                             // further checks on the Header to ensure, that this is indeed a renamed function
                                 if (docEnabled) {
                                     outputHandler->outputRenamedFunction(newFunc, func.name,
@@ -183,6 +177,8 @@ namespace functionanalysis{
                         } else {
                             compareFunctionHeader(func, newFunc, false);
                         }
+                        // remove the function from the newProgram, so that it is not compared again
+                        newProgram.erase(newProgram.begin() + bodyStatus.first);
                     }
                     outputHandler->endOfCurrentFunction();
                     //++i;
@@ -197,9 +193,6 @@ namespace functionanalysis{
 
             // overloaded handling
             for(auto const& overloadedFunctionSet : overloadedFunctions){
-                if(overloadedFunctionSet.at(0).qualifiedName == "component_query"){
-                    outs() << "Found component_query\n";
-                }
                 FunctionInstance func = overloadedFunctionSet.at(0);
                 compareOverloadedFunctionHeader(func, overloadedFunctionSet);
             }
@@ -216,10 +209,11 @@ namespace functionanalysis{
                 }
                 if (docEnabled) {
                     // prioritize functions that have the exact same name in the same file
-                    if (oldFunc.name == newFunc.name && oldFunc.filename == newFunc.filename) {
+                    if (oldFunc.name == newFunc.name) {
                         double percentageDifference = matcher::compareFunctionBodies(oldFunc, newFunc);
                         if(percentageDifference >= percentageCutOff)
-                            return std::make_pair(i, percentageDifference);
+                            // check if found function has a match in the old program and if not, return its index (since findFunction checks for name AND file)
+                            if(findFunction(oldProgram, newFunc) == -1) return std::make_pair(i, percentageDifference);
                     }
                     // TODO: make the check less strict, so it can change renames AND other things, would be better to increase strictness of the matcher (i.e. minimum of characters, etc.)
                     if (!compareFunctionHeader(oldFunc, newFunc, true)) {
@@ -300,10 +294,10 @@ namespace functionanalysis{
 
                 if (overloadedFunctions.empty()) {
                     outputHandler->outputDeletedFunction(func, true);
-                    for (const auto &item: func.declarations){
-                        if(!item.isDeclaration || func.isDeclaration) continue;
+                    for (const auto &decl: func.declarations){
+                        if(!decl.isDeclaration || item.isDeclaration) continue;
                         // the entire function is gone, this includes the decls
-                        outputHandler->outputDeletedFunction(item, true);
+                        outputHandler->outputDeletedFunction(decl, true);
                     }
                     outputHandler->endOfCurrentFunction();
                     continue;
@@ -453,6 +447,7 @@ namespace functionanalysis{
                         if (item.oldParam.first != item.newParam.first) {
                             outputHandler->outputParamChange(item.positionInOldParam, func, item.newParam, newFunc);
                         }
+
                         if (item.newParam.second.second != item.oldParam.second.second) {
                             outputHandler->outputParamDefaultChange(item.positionInOldParam, func, item.newParam,
                                                                     newFunc);

@@ -18,10 +18,11 @@ namespace objectanalysis{
             // prioritylist (name has to be the same): qualifiedName > filename > closest match on location
             std::map<int, ObjectInstance> possibleMatches;
             for(int i=0;i<set.size();i++){
-                if(set.at(i).qualifiedName == objectInstance.qualifiedName && set.at(i).filename == objectInstance.filename){
+                if(set.at(i).qualifiedName == objectInstance.qualifiedName && set.at(i).filePosition == objectInstance.filePosition){
                     return i;
                 }
-                if(set.at(i).name == objectInstance.name){
+                // qualifiedName is included, because anonymous objects dont have a name, but a qualifiedName
+                if(set.at(i).name == objectInstance.name || set.at(i).qualifiedName == objectInstance.qualifiedName){
                     possibleMatches.insert(std::make_pair(i, set.at(i)));
                 }
             }
@@ -32,8 +33,9 @@ namespace objectanalysis{
                 }
             }
 
+            /*
             // TODO: introduce a threshold at which the location is considered to be too far away and then maybe omit the file check
-            // if there isn't even a match with the same filename, return the variable with the closest matching location
+            // if there isn't even a match with the same filename, return the object with the closest matching location
             int smallestDiff = std::numeric_limits<int>::max();
             int candidate = -1;
             for (const auto &item: possibleMatches){
@@ -43,8 +45,10 @@ namespace objectanalysis{
                     candidate = item.first;
                 }
             }
+             */
 
-            return candidate;
+            //return candidate;
+            return -1;
         }
 
     public:
@@ -69,7 +73,7 @@ namespace objectanalysis{
                     if(item.isAbstract != newItem.isAbstract){
                         outputHandler->outputObjectAbstractChange(item, newItem);
                     }
-                    // TODO: compare inheritance
+                    newObjects.erase(newObjects.begin() + indexInNew);
                 }else{
                     outputHandler->outputObjectDeleted(item);
                 }

@@ -26,6 +26,7 @@ using namespace clang::tooling;
 using namespace clang;
 using namespace helper;
 using namespace functionanalysis;
+using namespace variableanalysis;
 
 int clockingThing=0;
 
@@ -58,9 +59,45 @@ int findFunctionInstance(std::vector<FunctionInstance>* program, const string& f
     return -1;
 }
 
+int findVariableInstance(std::vector<VariableInstance>* program, const string& filePos){
+    for(int i = 0; i < program->size(); i++){
+        if(program->at(i).filePosition == filePos){
+            return i;
+        }
+    }
+    return -1;
+}
+
+int findObjectInstance(std::vector<ObjectInstance>* program, const string& filePos){
+    for(int i = 0; i < program->size(); i++){
+        if(program->at(i).filePosition == filePos){
+            return i;
+        }
+    }
+    return -1;
+}
+
 string getFunctionDeclFilename(FunctionDecl* functionDecl, clang::ASTContext *Context, const string& dir){
     FullSourceLoc FullLocation = Context->getFullLoc(functionDecl->getBeginLoc());
     auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(functionDecl->getBeginLoc()).str()), dir);
+    return filename.string();
+}
+
+string getVarDeclFilename(VarDecl* varDecl, clang::ASTContext *Context, const string& dir){
+    FullSourceLoc FullLocation = Context->getFullLoc(varDecl->getBeginLoc());
+    auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(varDecl->getBeginLoc()).str()), dir);
+    return filename.string();
+}
+
+string getVarDeclFilename(FieldDecl* varDecl, clang::ASTContext *Context, const string& dir){
+    FullSourceLoc FullLocation = Context->getFullLoc(varDecl->getBeginLoc());
+    auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(varDecl->getBeginLoc()).str()), dir);
+    return filename.string();
+}
+
+string getRecordDeclFilename(RecordDecl* recordDecl, clang::ASTContext *Context, const string& dir){
+    FullSourceLoc FullLocation = Context->getFullLoc(recordDecl->getBeginLoc());
+    auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(recordDecl->getBeginLoc()).str()), dir);
     return filename.string();
 }
 
@@ -79,20 +116,33 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
                                        sm->getCharacterData(endToken) - sm->getCharacterData(start));
 
         }
-        params.push_back(std::make_pair(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam)));
+        params.emplace_back(paramDecl->getType().getAsString(), std::make_pair(paramDecl->getNameAsString(), defaultParam));
     }
     return params;
 }
 
-string getLocation(FunctionDecl* functionDecl, const string& dir){
-    SourceManager &sourceManager = functionDecl->getASTContext().getSourceManager();
+string getLocation(FunctionDecl* functionDecl, const string& dir, clang::ASTContext* context){
+    SourceManager &sourceManager = context->getSourceManager();
     SourceRange sourceRange = functionDecl->getSourceRange();
-    auto relative = sourceRange.getBegin().printToString(sourceManager);
-    auto startOfLoc = relative.substr(0, relative.find_last_of(':')).find_last_of(':');
-    auto loc = relative.substr(startOfLoc, relative.size());
-    relative = relative.substr(0, startOfLoc);
+    return getFunctionDeclFilename(functionDecl, context, dir) + ":" + to_string(sourceManager.getPresumedLineNumber(sourceRange.getBegin())) + ":" + to_string(sourceManager.getPresumedColumnNumber(sourceRange.getBegin()));
+}
 
-    return filesystem::relative(filesystem::path(relative), dir).string() + loc;
+string getLocation(VarDecl* varDecl, const string& dir, clang::ASTContext* context){
+    SourceManager &sourceManager = context->getSourceManager();
+    SourceRange sourceRange = varDecl->getSourceRange();
+    return getVarDeclFilename(varDecl, context, dir) + ":" + to_string(sourceManager.getPresumedLineNumber(sourceRange.getBegin())) + ":" + to_string(sourceManager.getPresumedColumnNumber(sourceRange.getBegin()));
+}
+
+string getLocation(FieldDecl* varDecl, const string& dir, clang::ASTContext* context){
+    SourceManager &sourceManager = context->getSourceManager();
+    SourceRange sourceRange = varDecl->getSourceRange();
+    return getVarDeclFilename(varDecl, context, dir) + ":" + to_string(sourceManager.getPresumedLineNumber(sourceRange.getBegin())) + ":" + to_string(sourceManager.getPresumedColumnNumber(sourceRange.getBegin()));
+}
+
+string getLocation(RecordDecl* varDecl, const string& dir, clang::ASTContext* context){
+    SourceManager &sourceManager = context->getSourceManager();
+    SourceRange sourceRange = varDecl->getSourceRange();
+    return getRecordDeclFilename(varDecl, context, dir) + ":" + to_string(sourceManager.getPresumedLineNumber(sourceRange.getBegin())) + ":" + to_string(sourceManager.getPresumedColumnNumber(sourceRange.getBegin()));
 }
 
 class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor> {
@@ -102,14 +152,16 @@ class APIAnalysisVisitor : public clang::RecursiveASTVisitor<APIAnalysisVisitor>
     std::vector<objectanalysis::ObjectInstance>* objects;
     std::vector<std::string> files;
     std::map<std::string, FunctionInstance>* mapOfDeclarations;
+    std::map<std::string, VariableInstance>* variableDefinitions;
 public:
-    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files, std::map<std::string, FunctionInstance>* mapOfDeclarations) : Context(Context){
+    explicit APIAnalysisVisitor(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string directory, std::vector<variableanalysis::VariableInstance>* variables, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files, std::map<std::string, FunctionInstance>* mapOfDeclarations, std::map<std::string, VariableInstance>* variableDefinitions) : Context(Context){
         this->program = program;
         this->dir = directory;
         this->variables = variables;
         this->objects = objects;
         this->files = files;
         this->mapOfDeclarations = mapOfDeclarations;
+        this->variableDefinitions = variableDefinitions;
     }
 
     FunctionInstance createFunctionInstance(FunctionDecl* functionDecl){
@@ -139,7 +191,21 @@ public:
             functionInstance.isTemplateSpec = true;
             functionInstance.isTemplateDecl = false;
             for (const auto &item: functionDecl->getTemplateSpecializationArgs()->asArray()) {
-                functionInstance.templateParams.emplace_back(item.getAsType().getAsString(), make_pair("", ""));
+                //functionInstance.templateParams.emplace_back(item.getAsType().getAsString(), make_pair("", ""));
+                if(item.getKind() == TemplateArgument::ArgKind::Type) {
+                    functionInstance.templateParams.emplace_back(item.getAsType().getAsString(), make_pair("", ""));
+                }else if(item.getKind() == TemplateArgument::ArgKind::Integral) {
+                    functionInstance.templateParams.emplace_back(toString(item.getAsIntegral(),10), make_pair("", ""));
+                }else if(item.getKind() == TemplateArgument::ArgKind::Declaration) {
+                    functionInstance.templateParams.emplace_back(item.getAsDecl()->getType().getAsString(),
+                                                                 make_pair("", ""));
+                }else if(item.getKind() == TemplateArgument::ArgKind::NullPtr) {
+                    functionInstance.templateParams.emplace_back("nullptr", make_pair("", ""));
+                }else if(item.getKind() == TemplateArgument::ArgKind::Template) {
+                    functionInstance.templateParams.emplace_back("nested template", make_pair("", ""));
+                }else{
+                    functionInstance.templateParams.emplace_back("unknown", make_pair("", ""));
+                }
             }
         } else if (functionDecl->getDescribedFunctionTemplate()) {
             functionInstance.isTemplateSpec = false;
@@ -167,8 +233,10 @@ public:
                         LangOptions lang;
                         SourceManager *sm = &(Context->getSourceManager());
                         auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
-                        defaultValue = std::string(sm->getCharacterData(start),
-                                                   sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                        auto sourceRange = parm->getDefaultArgument()->getSourceRange();
+                        //defaultValue = std::string(sm->getCharacterData(start),
+                        //                           sm->getCharacterData(endToken) - sm->getCharacterData(start));
+                        defaultValue = Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), functionDecl->getASTContext().getSourceManager(), LangOptions(), nullptr).str();
                     }
                     functionInstance.templateParams.emplace_back(parm->getType().getAsString(), make_pair(parm->getNameAsString(), defaultValue));
                 }
@@ -250,7 +318,7 @@ public:
         entireHeader = entireHeader.substr(0, entireHeader.find('{'));
         entireHeader.erase(std::remove(entireHeader.begin(), entireHeader.end(), '\n'), entireHeader.end());
 
-        functionInstance.filePosition = getLocation(functionDecl, dir);
+        functionInstance.filePosition = getLocation(functionDecl, dir, Context);
 
         functionInstance.fullHeader = entireHeader;
 
@@ -259,140 +327,12 @@ public:
         return functionInstance;
     }
 
-    bool VisitRecordDecl(clang::RecordDecl *recordDecl){
-        if(!Context->getSourceManager().isInMainFile(recordDecl->getLocation())){
-            return true;
-        }
-        objectanalysis::ObjectInstance objectInstance;
-
-        objectInstance.name = recordDecl->getNameAsString();
-        objectInstance.qualifiedName = recordDecl->getQualifiedNameAsString();
-
-        std::string fullName = recordDecl->getQualifiedNameAsString();
-        std::string delimiter = "::";
-
-        int pos = 0;
-        std::string singleNamespace;
-        while ((pos = fullName.find(delimiter)) != std::string::npos) {
-            singleNamespace = fullName.substr(0, pos);
-            objectInstance.location.push_back(singleNamespace);
-            fullName.erase(0, pos + delimiter.length());
-        }
-
-        // gets the File Name
-        FullSourceLoc FullLocation = Context->getFullLoc(recordDecl->getBeginLoc());
-        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(recordDecl->getBeginLoc()).str()), dir);
-        objectInstance.filename = filename;
-
-        switch (recordDecl->getTagKind()) {
-            case TTK_Struct:
-                objectInstance.objectType = objectanalysis::ObjectType::STRUCT;
-                break;
-            case TTK_Class:
-                objectInstance.objectType = objectanalysis::ObjectType::CLASS;
-                break;
-            case TTK_Union:
-                objectInstance.objectType = objectanalysis::ObjectType::ENUM_UNION;
-                break;
-            case TTK_Enum:
-                objectInstance.objectType = objectanalysis::ObjectType::ENUM;
-                break;
-            default:
-                objectInstance.objectType = objectanalysis::ObjectType::UNKNOWN;
-                break;
-        }
-
-        if(recordDecl->getTagKind() == TTK_Class) {
-            auto *cxxRecordDecl = dyn_cast<CXXRecordDecl>(recordDecl);
-            if(cxxRecordDecl && cxxRecordDecl->hasDefinition()) {
-                objectInstance.isAbstract = cxxRecordDecl->isAbstract();
-            }else{
-                objectInstance.isAbstract = false;
-            }
-            objectInstance.isFinal = cxxRecordDecl->isEffectivelyFinal();
-        }else{
-            objectInstance.isAbstract = false;
-            objectInstance.isFinal = false;
-        }
-
-        this->objects->push_back(objectInstance);
-
-        return true;
-    }
-
-    bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
-        if(!getAccessSpelling(functionDecl->getAccess()).empty() && getAccessSpelling(functionDecl->getAccess()) != "public"){
-            return true;
-        }
-
-        auto filename = getFunctionDeclFilename(functionDecl, Context, dir);
-        if(std::find(files.begin(), files.end(), filename) == files.end()){
-            return true;
-        }
-
-        if(!functionDecl->isThisDeclarationADefinition()){
-            if(functionDecl->isDefined() || functionDecl->getDefinition()){
-                FunctionInstance functionInstance;
-                if(mapOfDeclarations->find(getLocation(functionDecl, dir)) != mapOfDeclarations->end()){
-                    functionInstance = mapOfDeclarations->at(getLocation(functionDecl, dir));
-                }else{
-                    functionInstance = createFunctionInstance(functionDecl);
-                    mapOfDeclarations->insert(make_pair(getLocation(functionDecl, dir), functionInstance));
-                }
-
-                auto position = findFunctionInstance(program, getLocation(functionDecl->getDefinition(), dir));
-                if(position != -1){
-                    program->at(position).declarations.push_back(functionInstance);
-                }else{
-                    auto definition = createFunctionInstance(functionDecl->getDefinition());
-                    // some definition filenames are empty (about 7 out of 11000 and no idea why), so the filename is set to the declaration filename
-                    if(definition.filename.empty()){
-                        definition.filename = functionInstance.filename;
-                        definition.filePosition = functionInstance.filename + definition.filePosition;
-                    }
-                    definition.declarations.push_back(functionInstance);
-                    program->push_back(definition);
-                }
-            }else{
-                if(mapOfDeclarations->find(getLocation(functionDecl, dir)) != mapOfDeclarations->end()){
-                    return true;
-                }
-                auto functionInstance = createFunctionInstance(functionDecl);
-                mapOfDeclarations->insert(make_pair(getLocation(functionDecl, dir), functionInstance));
-            }
-        }else{
-            if(findFunctionInstance(program, getLocation(functionDecl->getDefinition(), dir)) == -1){
-                auto functionInstance = createFunctionInstance(functionDecl);
-                program->push_back(functionInstance);
-            }
-            /*
-            if(!functionDecl->decls_empty()){
-                for(auto temp = functionDecl->decls_begin(); temp != functionDecl->decls_end(); temp++){
-                    if(auto decl = temp->getAsFunction()) {
-                        functionInstance.declarations.push_back(createFunctionInstance(decl));
-                    }
-                }
-            }
-            */
-        }
-        return true;
-    };
-
-    bool VisitVarDecl(clang::VarDecl* varDecl){
-        // global variables of the files (i.e. not class / struct members)
-        if(!Context->getSourceManager().isInMainFile(varDecl->getLocation()) || !varDecl->hasGlobalStorage()){
-            return true;
-        }
-
+    VariableInstance createVariableInstance(VarDecl* varDecl){
         variableanalysis::VariableInstance variableInstance;
 
-        if(varDecl->isThisDeclarationADefinition()){
-            variableInstance.isDefinition = true;
-            if(varDecl->getEvaluatedValue()){
-                variableInstance.defaultValue = varDecl->getEvaluatedValue()->getAsString(*Context, varDecl->getType());
-            }
-        }else{
-            variableInstance.isDefinition = false;
+        clockingThing++;
+        if(clockingThing % 400 == 0){
+            outs() << clockingThing << "\n";
         }
 
         variableInstance.isClassMember = false;
@@ -405,12 +345,13 @@ public:
         if(fullType.find(" at ") != std::string::npos && fullType.find("(unnamed ") != std::string::npos){
             fullType = fullType.substr(0, fullType.find(" at ")) + ")";
         }
+        std::size_t ind = fullType.find("const ");
+        if(ind !=std::string::npos){
+            fullType.erase(ind, 6);
+        }
         variableInstance.type = fullType;
 
-        // gets the File Name
-        FullSourceLoc FullLocation = Context->getFullLoc(varDecl->getBeginLoc());
-        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(varDecl->getBeginLoc()).str()), dir);
-        variableInstance.filename = filename;
+        variableInstance.filename = getVarDeclFilename(varDecl, Context, dir);
 
         // gets a vector of all the classes / namespaces a variable is part of e.g. simple::example::function() -> [simple, example]
         std::string fullName = varDecl->getQualifiedNameAsString();
@@ -475,21 +416,20 @@ public:
             variableInstance.isMutable = false;
         }
 
-        variables->push_back(variableInstance);
+        variableInstance.filePosition = getLocation(varDecl, dir, Context);
 
-        return true;
+        return variableInstance;
     }
 
-    bool VisitFieldDecl(clang::FieldDecl* decl){
-        // class / struct members
-        if(!Context->getSourceManager().isInMainFile(decl->getLocation())){
-            return true;
-        }
-
+    VariableInstance createVariableInstance(FieldDecl* decl){
         variableanalysis::VariableInstance variableInstance;
-        variableInstance.isClassMember = false;
+        variableInstance.isClassMember = true;
         variableInstance.isInline = false;
-        variableInstance.isDefinition = false;
+
+        clockingThing++;
+        if(clockingThing % 400 == 0){
+            outs() << clockingThing << "\n";
+        }
 
         variableInstance.name = decl->getNameAsString();
         variableInstance.qualifiedName = decl->getQualifiedNameAsString();
@@ -499,20 +439,9 @@ public:
             fullType = fullType.substr(0, fullType.find(" at ")) + ")";
         }
         variableInstance.type = fullType;
-        if(decl->hasInClassInitializer()){
-            auto expr = decl->getInClassInitializer();
-            APValue apValue;
-            if (expr && expr->isCXX11ConstantExpr(*Context, &apValue)) {
-                variableInstance.defaultValue = apValue.getAsString(*Context, decl->getType());
-            } else {
-                variableInstance.defaultValue = "";
-            }
-            variableInstance.defaultValue = "";
-        }
-        // gets the File Name
-        FullSourceLoc FullLocation = Context->getFullLoc(decl->getBeginLoc());
-        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(decl->getBeginLoc()).str()), dir);
-        variableInstance.filename = filename;
+
+        variableInstance.filename = getVarDeclFilename(decl, Context, dir);
+        variableInstance.filePosition = getLocation(decl, dir, Context);
 
         // gets a vector of all the classes / namespaces a variable is part of e.g. simple::example::function() -> [simple, example]
         std::string fullName = decl->getQualifiedNameAsString();
@@ -566,6 +495,194 @@ public:
             variableInstance.accessSpecifier = "public";
         }
 
+        return variableInstance;
+    }
+
+    ObjectInstance createObjectInstance(RecordDecl* recordDecl){
+        objectanalysis::ObjectInstance objectInstance;
+
+        objectInstance.name = recordDecl->getNameAsString();
+        objectInstance.qualifiedName = recordDecl->getQualifiedNameAsString();
+
+        std::string fullName = recordDecl->getQualifiedNameAsString();
+        std::string delimiter = "::";
+
+        int pos = 0;
+        std::string singleNamespace;
+        while ((pos = fullName.find(delimiter)) != std::string::npos) {
+            singleNamespace = fullName.substr(0, pos);
+            objectInstance.location.push_back(singleNamespace);
+            fullName.erase(0, pos + delimiter.length());
+        }
+
+        objectInstance.filePosition = getLocation(recordDecl, dir, Context);
+
+        // gets the File Name
+        FullSourceLoc FullLocation = Context->getFullLoc(recordDecl->getBeginLoc());
+        auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(recordDecl->getBeginLoc()).str()), dir);
+        objectInstance.filename = filename;
+
+        switch (recordDecl->getTagKind()) {
+            case TTK_Struct:
+                objectInstance.objectType = objectanalysis::ObjectType::STRUCT;
+                break;
+            case TTK_Class:
+                objectInstance.objectType = objectanalysis::ObjectType::CLASS;
+                break;
+            case TTK_Union:
+                objectInstance.objectType = objectanalysis::ObjectType::ENUM_UNION;
+                break;
+            case TTK_Enum:
+                objectInstance.objectType = objectanalysis::ObjectType::ENUM;
+                break;
+            default:
+                objectInstance.objectType = objectanalysis::ObjectType::UNKNOWN;
+                break;
+        }
+
+        if(recordDecl->getTagKind() == TTK_Class) {
+            auto *cxxRecordDecl = dyn_cast<CXXRecordDecl>(recordDecl);
+            if(cxxRecordDecl && cxxRecordDecl->hasDefinition()) {
+                objectInstance.isAbstract = cxxRecordDecl->isAbstract();
+            }else{
+                objectInstance.isAbstract = false;
+            }
+            objectInstance.isFinal = cxxRecordDecl->isEffectivelyFinal();
+        }else{
+            objectInstance.isAbstract = false;
+            objectInstance.isFinal = false;
+        }
+
+        return objectInstance;
+    }
+
+    bool VisitRecordDecl(clang::RecordDecl *recordDecl){
+        auto filename = getRecordDeclFilename(recordDecl, Context, dir);
+        if(std::find(files.begin(), files.end(), filename) == files.end()){
+            return true;
+        }
+
+        if(findObjectInstance(objects, getLocation(recordDecl, dir, Context)) != -1){
+            return true;
+        }
+
+        auto objectInstance = createObjectInstance(recordDecl);
+        this->objects->push_back(objectInstance);
+
+        return true;
+    }
+
+    bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
+        if(!getAccessSpelling(functionDecl->getAccess()).empty() /*&& getAccessSpelling(functionDecl->getAccess()) != "public"*/){
+            return true;
+        }
+
+        auto filename = getFunctionDeclFilename(functionDecl, Context, dir);
+        if(std::find(files.begin(), files.end(), filename) == files.end()){
+            return true;
+        }
+
+        if(!functionDecl->isThisDeclarationADefinition()){
+            if(functionDecl->isDefined() || functionDecl->getDefinition()){
+                auto position = findFunctionInstance(program, getLocation(functionDecl->getDefinition(), dir, Context));
+                if(position != -1){
+                    auto loc = getLocation(functionDecl, dir, Context);
+                    for (const auto &item: program->at(position).declarations){
+                        if(item.filePosition == loc){
+                            return true;
+                        }
+                    }
+
+                    FunctionInstance functionInstance;
+                    if(mapOfDeclarations->find(getLocation(functionDecl, dir, Context)) != mapOfDeclarations->end()){
+                        functionInstance = mapOfDeclarations->at(getLocation(functionDecl, dir, Context));
+                    }else{
+                        functionInstance = createFunctionInstance(functionDecl);
+                        mapOfDeclarations->insert(make_pair(getLocation(functionDecl, dir, Context), functionInstance));
+                    }
+
+                    program->at(position).declarations.push_back(functionInstance);
+                }else{
+                    FunctionInstance functionInstance;
+                    if(mapOfDeclarations->find(getLocation(functionDecl, dir, Context)) != mapOfDeclarations->end()){
+                        functionInstance = mapOfDeclarations->at(getLocation(functionDecl, dir, Context));
+                    }else{
+                        functionInstance = createFunctionInstance(functionDecl);
+                        mapOfDeclarations->insert(make_pair(getLocation(functionDecl, dir, Context), functionInstance));
+                    }
+
+                    // some definition filenames are empty (about 7 out of 11000 and no idea why), so the filename is set to the declaration filename
+                    FunctionInstance definition;
+                    if(getFunctionDeclFilename(functionDecl->getDefinition(), Context, dir) == ""){
+                        auto filePosition = getLocation(functionDecl->getDefinition(), dir, Context);
+                        if(findFunctionInstance(program, functionInstance.filename + "{err}" + filePosition) != -1){
+                            return true;
+                        }
+                        definition = createFunctionInstance(functionDecl->getDefinition());
+                        definition.filename = functionInstance.filename;
+                        definition.filePosition = functionInstance.filename + "{err}" + filePosition;
+                        definition.declarations[0].filename = definition.filename;
+                        definition.declarations[0].filePosition = definition.filePosition;
+                    }else{
+                        definition = createFunctionInstance(functionDecl->getDefinition());
+                    }
+                    definition.declarations.push_back(functionInstance);
+                    program->push_back(definition);
+                }
+            }else{
+
+                if(mapOfDeclarations->find(getLocation(functionDecl, dir, Context)) != mapOfDeclarations->end()){
+                    return true;
+                }
+                auto functionInstance = createFunctionInstance(functionDecl);
+                mapOfDeclarations->insert(make_pair(getLocation(functionDecl, dir, Context), functionInstance));
+            }
+        }else{
+            if(findFunctionInstance(program, getLocation(functionDecl, dir, Context)) == -1){
+                if(functionDecl->getNameAsString() == "pmix_show_help_yylex"){
+                    int a = 0;
+                }
+                auto functionInstance = createFunctionInstance(functionDecl);
+                program->push_back(functionInstance);
+            }
+        }
+        return true;
+    };
+
+    bool VisitVarDecl(clang::VarDecl* varDecl){
+        // global variables of the files (i.e. not class / struct members)
+        if(!varDecl->hasGlobalStorage() && !varDecl->hasExternalStorage()){
+            return true;
+        }
+
+        auto filename = getVarDeclFilename(varDecl, Context, dir);
+        if(std::find(files.begin(), files.end(), filename) == files.end()){
+            return true;
+        }
+
+        VariableInstance variableInstance;
+        if(findVariableInstance(variables, getLocation(varDecl, dir, Context)) != -1){
+            return true;
+        }
+        
+        variableInstance = createVariableInstance(varDecl);
+        variables->push_back(variableInstance);
+
+        return true;
+    }
+
+    bool VisitFieldDecl(clang::FieldDecl* decl){
+        auto filename = getVarDeclFilename(decl, Context, dir);
+        if(std::find(files.begin(), files.end(), filename) == files.end()){
+            return true;
+        }
+
+        VariableInstance variableInstance;
+
+        if(findVariableInstance(variables, getLocation(decl, dir, Context)) != -1){
+            return true;
+        }
+        variableInstance = createVariableInstance(decl);
         variables->push_back(variableInstance);
 
         return true;
@@ -578,7 +695,7 @@ private:
 
 class APIAnalysisConsumer : public clang::ASTConsumer {
 public:
-    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string>& files, std::map<std::string, FunctionInstance>* mapOfDeclarations) : apiAnalysisVisitor(Context, program, dir, var, objects, files, mapOfDeclarations){}
+    explicit APIAnalysisConsumer(clang::ASTContext *Context, std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string>& files, std::map<std::string, FunctionInstance>* mapOfDeclarations, std::map<std::string, VariableInstance>* variableDefinitions) : apiAnalysisVisitor(Context, program, dir, var, objects, files, mapOfDeclarations, variableDefinitions){}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
         //outs()<<"File is: " + filesystem::current_path().string()<<"\n";
@@ -597,19 +714,21 @@ class APIAnalysisAction : public clang::ASTFrontendAction {
     std::vector<objectanalysis::ObjectInstance>* obj;
     std::vector<std::string> files;
     std::map<std::string, FunctionInstance>* mapOfDeclarations;
+    std::map<std::string, VariableInstance>* variableDefinitions;
 public:
-    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files, std::map<std::string, FunctionInstance>* mapOfDeclarations){
+    explicit APIAnalysisAction(std::vector<FunctionInstance>* program, std::string dir, std::vector<variableanalysis::VariableInstance>* var, std::vector<objectanalysis::ObjectInstance>* objects, std::vector<std::string> files, std::map<std::string, FunctionInstance>* mapOfDeclarations, std::map<std::string, VariableInstance>* variableDefinitions){
         this->p=program;
         this->directory = dir;
         this->var = var;
         this->obj = objects;
         this->files = files;
         this->mapOfDeclarations = mapOfDeclarations;
+        this->variableDefinitions = variableDefinitions;
     };
 
     virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
         //Compiler.getDiagnostics().setClient(new clang::IgnoringDiagConsumer(), true);
-        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj, files, mapOfDeclarations);
+        return std::make_unique<APIAnalysisConsumer>(&Compiler.getASTContext(), p, directory, var, obj, files, mapOfDeclarations, variableDefinitions);
     }
 
 private:
@@ -652,7 +771,7 @@ std::vector<FunctionInstance> assignDeclarations(std::vector<FunctionInstance>& 
 
     return output;
 }
-
+/*
 std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<variableanalysis::VariableInstance>& variables){
     clockingThing = 0;
     std::vector<variableanalysis::VariableInstance> output;
@@ -686,6 +805,7 @@ std::vector<variableanalysis::VariableInstance> assignDeclarations(std::vector<v
 
     return output;
 }
+ */
 
 std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance>& funcs){
     std::vector<FunctionInstance> output;
@@ -697,7 +817,7 @@ std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance
         // find all instances of this particular qualified name
         for (auto &otherItem : funcs)
         {
-            if(!otherItem.isTemplateSpec || otherItem.qualifiedName != item.qualifiedName || item.params.size() != otherItem.params.size()){
+            if(!otherItem.isTemplateSpec || otherItem.qualifiedName != item.qualifiedName || item.params.size() != otherItem.params.size() || !FunctionAnalyser::checkIfADeclarationMatches(item, otherItem)){
                 continue;
             }
             item.templateSpecializations.push_back(otherItem);
@@ -705,7 +825,7 @@ std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance
         }
     }
 
-    // delete all the declarations from the list
+    // delete all the template specalizations from the list
     for (auto & i : funcs)
     {
         // adds definitions to the output
@@ -718,23 +838,6 @@ std::vector<FunctionInstance> assignSpecializations(std::vector<FunctionInstance
 }
 
 void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std::string, FunctionInstance>* declarations) {
-    outs()<<"time check start\n";
-    /*
-    for (auto &def: *definitions){
-        for (const auto &decl: *declarations){
-            if(def.qualifiedName == "two_phase_exch_and_write" && decl.second.qualifiedName == "two_phase_exch_and_write"){
-                outs() << "here\n";
-                auto check = def.isCorrectDeclaration(decl.second);
-            }
-            if(def.qualifiedName == decl.second.qualifiedName){
-                if(def.isCorrectDeclaration(decl.second)){
-                    def.declarations.push_back(decl.second);
-                }
-            }
-        }
-    }
-    */
-    outs()<<"time check end\n";
     outs()<<"Started with " << declarations->size() << " declarations\n";
     for (auto &def : *definitions) {
         for (const auto &decl: def.declarations){
@@ -747,6 +850,21 @@ void insertUndefinedDeclarations(vector<FunctionInstance>* definitions, map<std:
         definitions->push_back(item.second);
     }
 }
+/*
+void insertUndeclaredVariables(vector<VariableInstance> *declarations, map<std::string, VariableInstance> *definitions) {
+    outs()<<"Started with " << definitions->size() << " definitions\n";
+    for (auto &decl : *declarations) {
+        for (const auto &def: decl.definitions){
+            definitions->erase(def.filePosition);
+        }
+    }
+
+    outs()<<"There are " << definitions->size() << " undefined definitions\n";
+    for (auto &item: *definitions){
+        declarations->push_back(item.second);
+    }
+}
+ */
 
 int main(int argc, const char **argv) {
     cxxopts::Options options("APIAnalysis", "Compares two versions of a C++ API and prints out the differences");
@@ -834,12 +952,24 @@ int main(int argc, const char **argv) {
     std::unique_ptr<CompilationDatabase> oldCD;
     std::unique_ptr<CompilationDatabase> newCD;
 
+
+    std::vector<std::string> relativeListOfOldFiles;
+    std::vector<std::string> relativeListOfNewFiles;
+
+    relativeListOfOldFiles.reserve(oldFiles.size());
+    for (const auto &item: oldFiles){
+        relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
+    }
+    relativeListOfNewFiles.reserve(newFiles.size());
+    for (const auto &item: newFiles){
+        relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
+    }
+
     if(result.count("oldCD")){
         std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
         oldCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);
         oldFiles.clear();
         oldFiles = oldCD->getAllFiles();
-        outs()<<oldFiles.size();
     }
 
     if(result.count("newCD")){
@@ -847,7 +977,6 @@ int main(int argc, const char **argv) {
         newCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["newCD"].as<std::string>()).string(), errorMessage);
         newFiles.clear();
         newFiles = newCD->getAllFiles();
-        outs()<<newFiles.size();
     }
 
     std::string errorMessage="No Compilation database could be found in the old directory, loading the standard empty compilation database";
@@ -872,25 +1001,15 @@ int main(int argc, const char **argv) {
         newCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
     }
 
-    //ClangTool oldTool(*oldCD,oldFiles);
-
-    std::vector<std::string> relativeListOfOldFiles;
-    std::vector<std::string> relativeListOfNewFiles;
-
     std::map<std::string, FunctionInstance> mapOfDeclarations;
+    std::map<std::string, VariableInstance> variableDefinitions;
 
-    relativeListOfOldFiles.reserve(oldFiles.size());
+    int fileCounter = 0;
     for (const auto &item: oldFiles){
-        relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
-    }
-    relativeListOfNewFiles.reserve(newFiles.size());
-    for (const auto &item: newFiles){
-        relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
-    }
-
-    for (const auto &item: oldFiles){
+        fileCounter++;
+        if(fileCounter % 100 == 0) outs()<<"Processing file " + itostr(fileCounter) + "/" + itostr(oldFiles.size()) + "\n";
         ClangTool oldTool = ClangTool(*oldCD,
-                            std::vector<std::string>{item});
+                                      std::vector<std::string>{item});
         if(result.count("extra-args")) {
             CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
             auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
@@ -902,38 +1021,17 @@ int main(int argc, const char **argv) {
             auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
             oldTool.appendArgumentsAdjuster(adjuster);
         }
-        oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations).get());
+        oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations, &variableDefinitions).get());
     }
 
-    /*
-    for (int i=0; i<oldFiles.size(); i++){
-        if(oldFiles.at(i) == "/home/paul/Downloads/openmpi-4.1.52/opal/mca/pmix/pmix3x/pmix/src/threads/thread.c"){
-            outs()<<"found the file\n";
-            outs()<<oldFiles.at(i+1);
-        }
-    }
-
-    ClangTool oldTool = ClangTool(*oldCD,
-                                  oldFiles);
-    if(result.count("extra-args")) {
-        CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
-        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
-        oldTool.appendArgumentsAdjuster(adjuster);
-    }
-
-    if(result.count("extra-args-old")) {
-        CommandLineArguments args = result["extra-args-old"].as<std::vector<std::string>>();
-        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
-        oldTool.appendArgumentsAdjuster(adjuster);
-    }
-    oldTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&oldProgram, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>())), &oldVariables, &oldObjects, relativeListOfOldFiles, &mapOfDeclarations).get());
-    */
     insertUndefinedDeclarations(&oldProgram, &mapOfDeclarations);
 
     mapOfDeclarations.clear();
-
-    //ClangTool newTool(*newCD,newFiles);
+    variableDefinitions.clear();
+    fileCounter = 0;
     for (const auto &item: newFiles){
+        fileCounter++;
+        if(fileCounter % 100 == 0) outs()<<"Processing file " + itostr(fileCounter) + "/" + itostr(newFiles.size()) + "\n";
         ClangTool newTool = ClangTool(*newCD,
                                       std::vector<std::string>{item});
         if(result.count("extra-args")) {
@@ -947,23 +1045,9 @@ int main(int argc, const char **argv) {
             auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
             newTool.appendArgumentsAdjuster(adjuster);
         }
-        newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles, &mapOfDeclarations).get());
-    }
-    /*
-    if(result.count("extra-args")) {
-        CommandLineArguments args = result["extra-args"].as<std::vector<std::string>>();
-        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
-        newTool.appendArgumentsAdjuster(adjuster);
+        newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles, &mapOfDeclarations, &variableDefinitions).get());
     }
 
-    if(result.count("extra-args-new")) {
-        CommandLineArguments args = result["extra-args-new"].as<std::vector<std::string>>();
-        auto adjuster = clang::tooling::getInsertArgumentAdjuster(args, ArgumentInsertPosition::BEGIN);
-        newTool.appendArgumentsAdjuster(adjuster);
-    }
-
-    newTool.run(argumentParsingFrontendActionFactory<APIAnalysisAction>(&newProgram, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>())), &newVariables, &newObjects, relativeListOfNewFiles, &mapOfDeclarations).get());
-    */
     insertUndefinedDeclarations(&newProgram, &mapOfDeclarations);
 
     outs()<<"All functions, objects and variables were processed\n";
@@ -972,9 +1056,6 @@ int main(int argc, const char **argv) {
 
     oldProgram = assignSpecializations(oldProgram);
     newProgram = assignSpecializations(newProgram);
-
-    oldVariables = assignDeclarations(oldVariables);
-    newVariables = assignDeclarations(newVariables);
 
     OutputHandler* outputHandler;
     if(jsonOutput){
