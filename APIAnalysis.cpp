@@ -573,10 +573,6 @@ public:
     }
 
     bool VisitFunctionDecl(clang::FunctionDecl *functionDecl){
-        if(!getAccessSpelling(functionDecl->getAccess()).empty() /*&& getAccessSpelling(functionDecl->getAccess()) != "public"*/){
-            return true;
-        }
-
         auto filename = getFunctionDeclFilename(functionDecl, Context, dir);
         if(std::find(files.begin(), files.end(), filename) == files.end()){
             return true;
@@ -639,9 +635,6 @@ public:
             }
         }else{
             if(findFunctionInstance(program, getLocation(functionDecl, dir, Context)) == -1){
-                if(functionDecl->getNameAsString() == "pmix_show_help_yylex"){
-                    int a = 0;
-                }
                 auto functionInstance = createFunctionInstance(functionDecl);
                 program->push_back(functionInstance);
             }
