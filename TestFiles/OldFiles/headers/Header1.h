@@ -40,9 +40,18 @@ public:
     void somethingPublic();
 protected:
     void somethingPrivate();
-    virtual void virtualFunc();
+    void virtualFunc();
 
 };
+
+struct testingInline{
+public:
+    friend int inlineTest();
+};
+
+int testingInline::inlineTest(){
+    return 10;
+}
 
 class switcher{
 public:
