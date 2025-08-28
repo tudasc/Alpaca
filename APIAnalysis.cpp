@@ -529,23 +529,7 @@ public:
         auto filename = std::filesystem::relative(std::filesystem::path(FullLocation.getManager().getFilename(recordDecl->getBeginLoc()).str()), dir);
         objectInstance.filename = filename;
 
-        switch (recordDecl->getTagKind()) {
-            case TTK_Struct:
-                objectInstance.objectType = objectanalysis::ObjectType::STRUCT;
-                break;
-            case TTK_Class:
-                objectInstance.objectType = objectanalysis::ObjectType::CLASS;
-                break;
-            case TTK_Union:
-                objectInstance.objectType = objectanalysis::ObjectType::ENUM_UNION;
-                break;
-            case TTK_Enum:
-                objectInstance.objectType = objectanalysis::ObjectType::ENUM;
-                break;
-            default:
-                objectInstance.objectType = objectanalysis::ObjectType::UNKNOWN;
-                break;
-        }
+        objectInstance.objectType = recordDecl->getTagKind();
 
         if(recordDecl->getTagKind() == TTK_Class) {
             auto *cxxRecordDecl = dyn_cast<CXXRecordDecl>(recordDecl);
