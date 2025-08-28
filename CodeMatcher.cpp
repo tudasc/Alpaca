@@ -37,10 +37,6 @@ namespace matcher{
     double compareFunctionBodies(const functionanalysis::FunctionInstance& oldFunc, const functionanalysis::FunctionInstance& newFunc) {
         auto strippedNewCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(newFunc.body));
         auto strippedOldCode = helper::stripCodeOfEmptySpaces(helper::stripCodeOfComments(oldFunc.body));
-        // TODO: reevaluate if it is a good idea to completly ignore empty functions in the comparison AND if it is a good idea to ignore functions that are smaller than *arbitrary* characters (for getter and setter)
-        if(strippedNewCode == "{}" || strippedOldCode == "{}" || strippedOldCode.size() < 15){
-            return 0;
-        }
         double distance = matcher::levenshteinDistance(convertStringToVector(strippedOldCode),
                                                                         convertStringToVector(strippedNewCode))[strippedOldCode.length()][strippedNewCode.length()];
         unsigned long longest = std::max(strippedOldCode.length(),strippedNewCode.length());

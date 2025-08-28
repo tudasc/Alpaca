@@ -970,6 +970,7 @@ int main(int argc, const char **argv) {
         oldCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);
         oldFiles.clear();
         oldFiles = oldCD->getAllFiles();
+        outs() << oldFiles.size() << " old files will be processed.\n";
     }
 
     if(result.count("newCD")){
@@ -977,6 +978,7 @@ int main(int argc, const char **argv) {
         newCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["newCD"].as<std::string>()).string(), errorMessage);
         newFiles.clear();
         newFiles = newCD->getAllFiles();
+        outs() << newFiles.size() << " new files will be processed.\n";
     }
 
     std::string errorMessage="No Compilation database could be found in the old directory, loading the standard empty compilation database";
