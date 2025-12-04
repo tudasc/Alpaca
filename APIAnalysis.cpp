@@ -108,10 +108,10 @@ vector<pair<string, pair<string, string>>> getFunctionParams(FunctionDecl* funct
         auto paramDecl = functionDecl->getParamDecl(i);
         std::string defaultParam;
         if(paramDecl->hasDefaultArg()){
-            auto start = paramDecl->getDefaultArg()->getBeginLoc(), end = paramDecl->getDefaultArg()->getEndLoc();
-            LangOptions lang;
+            auto start = paramDecl->getDefaultArg()->getBeginLoc();
+            auto end = paramDecl->getDefaultArg()->getEndLoc();
             SourceManager *sm = &(Context->getSourceManager());
-            auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, lang);
+            auto endToken = Lexer::getLocForEndOfToken(end, 0, *sm, Context->getLangOpts());
             defaultParam = std::string(sm->getCharacterData(start),
                                        sm->getCharacterData(endToken) - sm->getCharacterData(start));
 
@@ -949,6 +949,7 @@ int main(int argc, const char **argv) {
         relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
     }
 
+    // TODO null check for autodetect CD
     if(result.count("oldCD")){
         std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
         oldCD = FixedCompilationDatabase::autoDetectFromDirectory(std::filesystem::canonical(result["oldCD"].as<std::string>()).string(), errorMessage);

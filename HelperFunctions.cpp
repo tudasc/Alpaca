@@ -23,19 +23,11 @@ namespace helper {
         for(decltype(it) end; it != end; ++it){
             auto iteratedFile = it->path().string();
             if(it->is_directory()) {
-                if (std::find_if(excludedFiles->begin(), excludedFiles->end(), [iteratedFile, path](std::string str){
-                    if(str.at(str.length()-1) == '/' || str.at(str.length()-1) == '\\'){
-                        str = str.substr(0, str.length() - 1);
-                    }
-                    if(str.at(0) == '/' || str.at(0) == '\\'){
-                        str = str.substr(1, str.length());
-                    }
-                    str = path + str;
-                    if(iteratedFile.length() < str.length()){
-                        return false;
-                    }
-                    return str == iteratedFile;
-                }) != excludedFiles->end()){
+                // get the last part of the path without any slashes
+                std::string path = it->path().string();
+                path = path.substr(path.find_last_of('/') + 1, path.length());
+                // check if this folder is present in the excluded files
+                if(std::find(excludedFiles->begin(), excludedFiles->end(), path) != excludedFiles->end()){
                     it.disable_recursion_pending();
                 }
                 continue;
