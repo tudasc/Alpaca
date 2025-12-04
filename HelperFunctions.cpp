@@ -172,10 +172,6 @@ namespace helper {
             for (const auto &exc: *excludedFiles){
                 auto compexc = path + "/" + exc;
                 compexc = fs::canonical(compexc);
-                if(compexc == "/home/paul/api-change-detection/testLibraries/llvm13/llvm"){
-                    llvm::errs() << "compexc: " << compexc << "\n";
-                    llvm::errs() << "item: " << item << "\n";
-                }
                 if(item.length() < compexc.length()){
                     continue;
                 }
