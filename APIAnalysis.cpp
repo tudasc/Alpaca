@@ -366,8 +366,10 @@ public:
         variableInstance.qualifiedName = varDecl->getQualifiedNameAsString();
 
         auto fullType = varDecl->getType().getAsString();
-        // TODO: well...
+        // TODO: well... (used to fix unnamed / anonymous namespaces, classes and lambdas)
         if(fullType.find(" at ") != std::string::npos && fullType.find("(unnamed ") != std::string::npos){
+            fullType = fullType.substr(0, fullType.find(" at ")) + ")";
+        } else if(fullType.find(" at ") != std::string::npos && fullType.find("(lambda ") != std::string::npos){
             fullType = fullType.substr(0, fullType.find(" at ")) + ")";
         }
         std::size_t ind = fullType.find("const ");
@@ -461,6 +463,8 @@ public:
         auto fullType = decl->getType().getAsString();
         // TODO: well...
         if(fullType.find(" at ") != std::string::npos && fullType.find("(unnamed ") != std::string::npos){
+            fullType = fullType.substr(0, fullType.find(" at ")) + ")";
+        } else if(fullType.find(" at ") != std::string::npos && fullType.find("(lambda ") != std::string::npos){
             fullType = fullType.substr(0, fullType.find(" at ")) + ")";
         }
         variableInstance.type = fullType;
