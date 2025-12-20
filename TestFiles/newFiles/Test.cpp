@@ -13,6 +13,8 @@ template <typename T> T specAdded(T x, T y, T z){
     return x;
 }
 
+void checkingSpecificConfiguration(int x, int y, int q);
+
 template <> int specAdded(int x, int y){
     return 20;
 }

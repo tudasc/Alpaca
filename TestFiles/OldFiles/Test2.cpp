@@ -1,7 +1,7 @@
 #include "headers/Header1.h"
 
 int main() {
-    auto pmml = new test();
-    pmml->somethingPublic();
+    auto tst = new test();
+    tst->somethingPublic();
     return 0;
 }
