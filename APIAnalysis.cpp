@@ -966,6 +966,16 @@ int main(int argc, const char **argv) {
     std::vector<std::string> relativeListOfOldFiles;
     std::vector<std::string> relativeListOfNewFiles;
 
+    // fill relativeLists at this point, because the iterated files are needed during the extraction to distinguish between project files and library files (not doing this can lead to headers being ignored)
+    relativeListOfOldFiles.reserve(oldFiles.size());
+    for (const auto &item: oldFiles){
+        relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
+    }
+    relativeListOfNewFiles.reserve(newFiles.size());
+    for (const auto &item: newFiles){
+        relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
+    }
+
     // TODO null check for autodetect CD
     if(result.count("oldCD")){
         std::string errorMessage = "Could not load the specified old compilation Database, trying to find one in the project files\n";
@@ -1019,14 +1029,12 @@ int main(int argc, const char **argv) {
         newCD = FixedCompilationDatabase::loadFromBuffer(".","",errorMessage);
     }
 
-    relativeListOfOldFiles.reserve(oldFiles.size());
-    for (const auto &item: oldFiles){
-        relativeListOfOldFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["oldDir"].as<std::string>()))).string());
-    }
-    relativeListOfNewFiles.reserve(newFiles.size());
-    for (const auto &item: newFiles){
-        relativeListOfNewFiles.push_back(std::filesystem::relative(item, std::filesystem::canonical(std::filesystem::absolute(result["newDir"].as<std::string>()))).string());
-    }
+    auto [filteredOld, filteredNew] = helper::filterUnchangedFiles(oldFiles, newFiles, result["oldDir"].as<std::string>(), result["newDir"].as<std::string>());
+
+    outs() << "The number of files that were filtered out because they were unchanged is " << oldFiles.size() - filteredOld.size() << " for the old project and " << newFiles.size() - filteredNew.size() << " for the new project\n";
+    outs() << "Final number of files is " << filteredOld.size() << " for the old project and " << filteredNew.size() << " for the new project\n";
+    oldFiles = filteredOld;
+    newFiles = filteredNew;
 
     std::map<std::string, FunctionInstance> mapOfDeclarations;
     std::map<std::string, VariableInstance> variableDefinitions;
